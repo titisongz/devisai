@@ -481,6 +481,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
   <div class="inner">
     <a class="skip" href="dashboard.html">Passer pour l'instant</a>
     <div class="grow"></div>
+    <div id="obError" style="display:none;color:var(--danger);font-size:13.5px;padding:8px 14px;background:var(--danger-soft);border-radius:var(--r-sm);border:1px solid rgba(239,93,111,.3)"></div>
     <button class="btn btn-primary btn-lg" onclick="finishOb(event)">Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i></button>
   </div>
 </footer>
@@ -614,10 +615,33 @@ function setHex(v){
 document.querySelectorAll('#sw .swatch').forEach(function(s){
   s.addEventListener('click',function(){document.getElementById('nativeColor').value=s.dataset.c;setHex(s.dataset.c);});
 });
+function showError(msg) {
+  var el = document.getElementById('obError');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function finishOb(e){
   e.preventDefault();
+  document.getElementById('obError').style.display = 'none';
+
+  const logoInput = document.getElementById('logoInput');
+  if (!logoInput || !logoInput.files || logoInput.files.length === 0) {
+    showError('Veuillez uploader le logo de votre entreprise.');
+    return;
+  }
+
   const canvas = document.getElementById('signatureCanvas');
-  const signatureBase64 = canvas.toDataURL('image/png');
+  const signatureData = canvas.toDataURL('image/png');
+  const blankCanvas = document.createElement('canvas');
+  blankCanvas.width = canvas.width;
+  blankCanvas.height = canvas.height;
+  if (signatureData === blankCanvas.toDataURL('image/png')) {
+    showError('Veuillez apposer votre signature avant de continuer.');
+    return;
+  }
+
   fetch('/api/companies', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -628,7 +652,7 @@ function finishOb(e){
       website: document.getElementById('cw').value,
       address: document.getElementById('ca').value,
       brand_color: document.getElementById('nativeColor').value,
-      signature_base64: signatureBase64
+      signature_base64: signatureData
     })
   });
   toast('Entreprise enregistrée','checkCircle');
