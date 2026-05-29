@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Configuration · DevisAI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style id="ds">/* ============================================================
    DevisAI — Design System
    Dark premium SaaS. Indigo base, green accent.
@@ -415,7 +416,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <p>Ces informations apparaîtront en en-tête de tous vos devis. Vous pourrez les modifier à tout moment.</p>
   </div>
 
-  <form class="form-grid stagger" data-base="80" data-step="55" onsubmit="finishOb(event)">
+  <form class="form-grid stagger" data-base="80" data-step="55" onsubmit="handleSubmit(event)">
     <div class="field"><label for="cn">Nom de l'entreprise</label><input class="input" id="cn" placeholder="Ex : Bâti Plus Sénégal" value="Bâti Plus Sénégal" required></div>
     <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" required></div></div>
     <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" placeholder="+221 ..." value="+221 77 845 12 30" required></div></div>
@@ -482,7 +483,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <a class="skip" href="dashboard.html">Passer pour l'instant</a>
     <div class="grow"></div>
     <div id="obError" style="display:none;color:var(--danger);font-size:13.5px;padding:8px 14px;background:var(--danger-soft);border-radius:var(--r-sm);border:1px solid rgba(239,93,111,.3)"></div>
-    <button class="btn btn-primary btn-lg" onclick="finishOb(event)">Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i></button>
+    <button class="btn btn-primary btn-lg" onclick="handleSubmit(event)">Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i></button>
   </div>
 </footer>
 
@@ -622,16 +623,24 @@ function showError(msg) {
   el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function finishOb(e){
+async function handleSubmit(e) {
   e.preventDefault();
   document.getElementById('obError').style.display = 'none';
 
+  const token = localStorage.getItem('devisai_token');
+  if (!token) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  // Vérification logo
   const logoInput = document.getElementById('logoInput');
   if (!logoInput || !logoInput.files || logoInput.files.length === 0) {
     showError('Veuillez uploader le logo de votre entreprise.');
     return;
   }
 
+  // Vérification signature
   const canvas = document.getElementById('signatureCanvas');
   const signatureData = canvas.toDataURL('image/png');
   const blankCanvas = document.createElement('canvas');
@@ -642,21 +651,86 @@ function finishOb(e){
     return;
   }
 
-  fetch('/api/companies', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      company_name: document.getElementById('cn').value,
-      email: document.getElementById('ce').value,
-      phone: document.getElementById('cp').value,
-      website: document.getElementById('cw').value,
-      address: document.getElementById('ca').value,
-      brand_color: document.getElementById('nativeColor').value,
-      signature_base64: signatureData
-    })
+  // Conversion logo en base64
+  const logoFile = logoInput.files[0];
+  const logoBase64 = await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(logoFile);
   });
-  toast('Entreprise enregistrée','checkCircle');
-  setTimeout(function(){window.location.href='dashboard.html';},700);
+
+  // Récupération des valeurs
+  const companyData = {
+    name: document.getElementById('cn').value,
+    email: document.getElementById('ce').value,
+    phone: document.getElementById('cp').value,
+    address: document.getElementById('ca').value,
+    website: document.getElementById('cw')?.value || '',
+    logo_url: logoBase64,
+    signature_base64: signatureData,
+    brand_color: document.getElementById('nativeColor')?.value || '#2ecc71',
+    is_default: true
+  };
+
+  const SUPABASE_URL = 'https://sweskgpcmryjedvmfecd.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_-4E4HmtGLcYUrSCSTS0RkQ_vOmMTzwE';
+
+  // Décoder le user_id directement depuis le JWT sans appel réseau
+  function parseJwt(token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join(''));
+      return JSON.parse(jsonPayload);
+    } catch(e) {
+      return null;
+    }
+  }
+
+  const payload = parseJwt(token);
+  if (!payload || !payload.sub) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  const userId = payload.sub;
+
+  // Créer client Supabase et insérer avec le token
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: {
+        Authorization: 'Bearer ' + token
+      }
+    }
+  });
+
+  const { data, error } = await client
+    .from('companies')
+    .insert({
+      user_id: userId,
+      name: companyData.name,
+      email: companyData.email,
+      phone: companyData.phone,
+      address: companyData.address,
+      website: companyData.website || null,
+      logo_url: companyData.logo_url || null,
+      signature_base64: companyData.signature_base64 || null,
+      brand_color: companyData.brand_color || '#2ecc71',
+      is_default: true
+    })
+    .select()
+    .single();
+
+  console.log('Insert result:', data, error);
+
+  if (error) {
+    showError('Erreur : ' + error.message);
+    return;
+  }
+
+  window.location.href = 'dashboard.html';
 }
 </script>
 <script>

@@ -25,14 +25,25 @@ router.get('/', async (req, res) => {
 
 // POST /api/companies — crée une entreprise
 router.post('/', async (req, res) => {
-  const { name, address, phone, email, siret, logo_url } = req.body;
+  const { name, email, phone, address, website, logo_url, signature_base64, brand_color, is_default } = req.body;
 
   if (!name) return res.status(400).json({ error: 'Le nom de l\'entreprise est requis' });
 
   try {
     const { data, error } = await supabase
       .from('companies')
-      .insert({ user_id: req.user.sub, name, address, phone, email, siret, logo_url })
+      .insert({
+        user_id: req.user.sub,
+        name,
+        email,
+        phone,
+        address,
+        website: website || null,
+        logo_url: logo_url || null,
+        signature_base64: signature_base64 || null,
+        brand_color: brand_color || '#2ecc71',
+        is_default: is_default || false
+      })
       .select()
       .single();
 

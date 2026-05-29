@@ -75,7 +75,8 @@ router.post('/login', async (req, res) => {
       user: {
         id: data.user.id,
         email: data.user.email,
-        full_name: profile?.full_name || '',
+        first_name: profile?.first_name || data.user.user_metadata?.first_name || '',
+        last_name: profile?.last_name || data.user.user_metadata?.last_name || '',
       },
     });
   } catch (err) {
@@ -89,7 +90,7 @@ router.get('/me', authMiddleware, async (req, res) => {
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', req.user.sub)
+      .eq('id', req.user.id)
       .single();
 
     if (error) return res.status(404).json({ error: 'Profil introuvable' });
