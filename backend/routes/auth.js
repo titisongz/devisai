@@ -5,7 +5,7 @@ const authMiddleware = require('../middleware/auth');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
-  const { email, password, full_name } = req.body;
+  const { email, password, first_name, last_name } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email et mot de passe requis' });
@@ -23,9 +23,15 @@ router.post('/register', async (req, res) => {
     // Création du profil dans la table profiles
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert({ id: data.user.id, email, full_name: full_name || '' });
+      .insert({
+        id: data.user.id,
+        first_name: first_name,
+        last_name: last_name
+      });
 
-    if (profileError) return res.status(400).json({ error: profileError.message });
+    if (profileError) {
+      console.error('Erreur insertion profil (non bloquante):', profileError.message);
+    }
 
     // Génération du JWT via Supabase (sign in après création)
     const { data: session, error: loginError } = await supabase.auth.signInWithPassword({
@@ -37,7 +43,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       token: session.session.access_token,
-      user: { id: data.user.id, email, full_name: full_name || '' },
+      user: { id: data.user.id, email, first_name: first_name || '', last_name: last_name || '' },
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });

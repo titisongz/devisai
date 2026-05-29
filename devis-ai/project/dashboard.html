@@ -422,9 +422,9 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
       <a href="#" onclick="toast('Paramètres — bientôt disponible','settings')"><i class="ic" data-icon="settings"></i> Paramètres</a>
     </nav>
     <div class="sidebar-foot">
-      <div class="user-card">
-        <span class="avatar">AD</span>
-        <div class="meta"><div class="nm">Amadou Diallo</div><div class="em">amadou@batiplus.sn</div></div>
+      <div class="user-card" onclick="logout()" title="Se déconnecter">
+        <span class="avatar" id="userAvatar">AD</span>
+        <div class="meta"><div class="nm" id="userName">Amadou Diallo</div><div class="em" id="userEmail">amadou@batiplus.sn</div></div>
         <i class="ic ic-sm faint" data-icon="logout"></i>
       </div>
     </div>
@@ -451,7 +451,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
       <div class="content-wrap">
         <div class="dash-head reveal">
           <div>
-            <h1>Bonjour Amadou 👋</h1>
+            <h1 id="dashGreeting">Bonjour Amadou 👋</h1>
             <div class="date" id="today">—</div>
           </div>
         </div>
@@ -551,6 +551,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
   <a href="#" onclick="toast('Paramètres — bientôt disponible','settings')"><i class="ic" data-icon="settings"></i>Réglages</a>
 </nav>
 
+<script src="js/auth.js"></script>
 <script>/* ============================================================
    DevisAI — shared runtime (vanilla)
    ============================================================ */
@@ -660,7 +661,30 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 })();
 </script>
 <script>
+checkAuth();
 document.getElementById('today').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+(function(){
+  var user = getUser();
+  if(!user) return;
+  var firstName = user.first_name || user.firstName || (user.name||'').split(' ')[0] || 'vous';
+  var fullName = (user.first_name||user.firstName||'') + ' ' + (user.last_name||user.lastName||'');
+  fullName = fullName.trim() || user.name || user.email;
+  var initials = ((user.first_name||user.firstName||'')[0]||'') + ((user.last_name||user.lastName||'')[0]||'');
+  initials = initials.toUpperCase() || (user.email||'?')[0].toUpperCase();
+
+  var greet = document.getElementById('dashGreeting');
+  if(greet) greet.textContent = 'Bonjour ' + firstName + ' 👋';
+
+  var nm = document.getElementById('userName');
+  if(nm) nm.textContent = fullName;
+
+  var em = document.getElementById('userEmail');
+  if(em) em.textContent = user.email || '';
+
+  var av = document.getElementById('userAvatar');
+  if(av) av.textContent = initials;
+})();
 </script>
 </body>
 </html>

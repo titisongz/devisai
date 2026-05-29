@@ -396,12 +396,58 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .check a{color:var(--accent);font-weight:600}
 .swap-line{text-align:center;color:var(--muted);font-size:14px;margin-top:22px}
 .swap-line a{color:var(--accent);font-weight:600}
+.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--faint);cursor:pointer;padding:4px;display:flex;align-items:center;transition:color .2s}
+.pw-toggle:hover{color:var(--muted)}
 @media (max-width:900px){.auth{grid-template-columns:1fr}.auth-aside{display:none}.two{grid-template-columns:1fr}}
+
+/* ---- Particle canvas ---- */
+.particle-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
+.auth-aside .aside-head,.auth-aside .steps-mini,.auth-aside .aside-foot{position:relative;z-index:1}
+
+/* ---- Animations aside ---- */
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.aside-quote{animation:fadeSlideUp .7s var(--ease) .1s both}
+.steps-mini .s{opacity:0}
+.steps-mini .s:nth-child(1){animation:slideInLeft .6s var(--ease) .2s both}
+.steps-mini .s:nth-child(2){animation:slideInLeft .6s var(--ease) .4s both}
+.steps-mini .s:nth-child(3){animation:slideInLeft .6s var(--ease) .6s both}
+
+/* ---- Animation formulaire droit ---- */
+.auth-main .auth-card{animation:slideInRight .7s var(--ease) .15s both}
+
+/* ---- Input focus glow animé ---- */
+@keyframes inputFocusIn{0%{box-shadow:0 0 0 0 rgba(46,204,113,.55)}100%{box-shadow:0 0 0 4px rgba(46,204,113,.18),0 0 16px rgba(46,204,113,.12)}}
+.input:focus{outline:none;border-color:var(--accent);background:#0c0c28;animation:inputFocusIn .35s var(--ease) forwards}
+
+/* ---- Shimmer bouton ---- */
+@keyframes shimmerPass{from{left:-80%}to{left:130%}}
+#regBtn{position:relative;overflow:hidden}
+#regBtn::after{content:'';position:absolute;top:0;left:-80%;width:45%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);transform:skewX(-15deg);opacity:0;transition:none;pointer-events:none}
+#regBtn:not(:disabled):hover::after{opacity:1;animation:shimmerPass .65s ease forwards}
+
+/* ---- Fix alignement checkbox CGU ---- */
+.check{align-items:center}
+.check input{margin-top:0}
+
+/* ---- Fix fond blanc autofill champ mot de passe ---- */
+input[type="password"], input[type="text"] {
+  background-color: #1a1f2e !important;
+  color: #ffffff !important;
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #1a1f2e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
 </style>
 </head>
 <body>
 <div class="auth">
   <aside class="auth-aside">
+    <canvas class="particle-canvas" id="particleCanvas"></canvas>
     <div class="glow-orb"></div>
     <div class="aside-head">
       <a class="brand" href="login.html"><span class="mark"><i data-icon="logo"></i></span><span class="name">Devis<b>AI</b></span></a>
@@ -433,14 +479,24 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
         </div>
         <div class="field">
           <label for="pw">Mot de passe</label>
-          <div class="input-group"><i class="ic" data-icon="lock"></i><input class="input" id="pw" type="password" placeholder="8 caractères minimum" oninput="meter(this.value)" required></div>
-          <div class="pw-meter" id="meter"><span></span><span></span><span></span><span></span></div>
+          <div class="input-group"><i class="ic" data-icon="lock"></i><input class="input" id="pw" type="password" placeholder="8 caractères minimum" required style="padding-right:44px"><button type="button" class="pw-toggle" onclick="togglePw('pw',this)" aria-label="Voir le mot de passe"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></div>
+          <div class="pw-meter" id="meter"><span class="strength-segment"></span><span class="strength-segment"></span><span class="strength-segment"></span><span class="strength-segment"></span></div>
         </div>
         <div class="field">
           <label for="pw2">Confirmer le mot de passe</label>
-          <div class="input-group"><i class="ic" data-icon="lock"></i><input class="input" id="pw2" type="password" placeholder="Retapez le mot de passe" required></div>
+          <div class="input-group"><i class="ic" data-icon="lock"></i><input class="input" id="pw2" type="password" placeholder="Retapez le mot de passe" required style="padding-right:44px"><button type="button" class="pw-toggle" onclick="togglePw('pw2',this)" aria-label="Voir la confirmation"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></div>
         </div>
-        <label class="check"><input type="checkbox" checked required> J'accepte les <a href="#">conditions d'utilisation</a> et la <a href="#">politique de confidentialité</a>.</label>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+          <input type="checkbox" id="terms" name="terms"
+            style="width:16px; height:16px; min-width:16px; cursor:pointer; accent-color:#2ecc71;">
+          <label for="terms" style="font-size:13px; color:#a0aec0; line-height:1.4; cursor:pointer;">
+            J'accepte les
+            <a href="#" style="color:#2ecc71;">conditions d'utilisation</a>
+            et la
+            <a href="#" style="color:#2ecc71;">politique de confidentialité</a>
+          </label>
+        </div>
+        <div id="regError" style="display:none;color:var(--danger);font-size:13.5px;text-align:center;padding:10px 14px;background:var(--danger-soft);border-radius:var(--r-sm);border:1px solid rgba(239,93,111,.3)"></div>
         <button class="btn btn-primary btn-lg btn-block" type="submit" id="regBtn">Créer mon compte</button>
       </form>
       <p class="swap-line">Déjà un compte ? <a href="login.html">Se connecter</a></p>
@@ -556,20 +612,151 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 })();
 </script>
 <script>
-function meter(v){
-  var bars=document.querySelectorAll('#meter span');
-  var score=0;
-  if(v.length>=8)score++; if(/[A-Z]/.test(v))score++; if(/[0-9]/.test(v))score++; if(/[^A-Za-z0-9]/.test(v))score++;
-  var col=['#ef5d6f','#f5b14c','#f5b14c','#2ecc71'];
-  bars.forEach(function(b,i){b.style.background=i<score?col[score-1]:'rgba(255,255,255,.1)';});
+(function(){
+  var passwordInput = document.getElementById('pw');
+  if(!passwordInput) return;
+  passwordInput.addEventListener('input', function(){
+    var val = this.value;
+    var segs = document.querySelectorAll('.strength-segment');
+    segs.forEach(function(s){ s.style.background = '#2d3748'; });
+    if(val.length === 0) return;
+    if(val.length >= 1) segs[0].style.background = '#e53e3e';
+    if(val.length >= 4) segs[1].style.background = '#ed8936';
+    if(val.length >= 8) segs[2].style.background = '#ecc94b';
+    if(val.length >= 12 && /[0-9]/.test(val) && /[^a-zA-Z0-9]/.test(val))
+      segs[3].style.background = '#2ecc71';
+  });
+})();
+var EYE_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+var EYE_OFF = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+function togglePw(id, btn) {
+  var input = document.getElementById(id);
+  var hidden = input.type === 'password';
+  input.type = hidden ? 'text' : 'password';
+  btn.innerHTML = hidden ? EYE_OFF : EYE_OPEN;
 }
 function handleRegister(e){
   e.preventDefault();
-  var b=document.getElementById('regBtn');
-  b.innerHTML='<span class="ic spin" style="width:18px;height:18px">'+icon('settings')+'</span> Création...';
-  b.disabled=true;
-  setTimeout(function(){window.location.href='onboarding.html';},950);
+  var pw = document.getElementById('pw').value;
+  var pw2 = document.getElementById('pw2').value;
+  var errEl = document.getElementById('regError');
+  errEl.style.display = 'none';
+
+  if(pw !== pw2){
+    errEl.textContent = 'Les mots de passe ne correspondent pas.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  var b = document.getElementById('regBtn');
+  b.innerHTML = '<span class="ic spin" style="width:18px;height:18px">'+icon('settings')+'</span> Création...';
+  b.disabled = true;
+
+  fetch('http://localhost:3000/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: document.getElementById('em').value,
+      password: pw,
+      first_name: document.getElementById('fn').value,
+      last_name: document.getElementById('ln').value
+    })
+  })
+  .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; }); })
+  .then(function(r){
+    var data = r.data;
+    console.log('Status:', r.status);
+    console.log('Data:', JSON.stringify(data));
+    if(r.ok && data.token){
+      localStorage.setItem('devisai_token', data.token);
+      localStorage.setItem('devisai_user', JSON.stringify(data.user));
+      window.location.href = 'onboarding.html';
+    } else {
+      let errorMsg = 'Une erreur est survenue. Réessayez.';
+      if (data.error || data.message) {
+        const msg = (data.error || data.message).toLowerCase();
+        if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+          errorMsg = 'Un compte existe déjà avec cet email.';
+        } else if (msg.includes('password') && msg.includes('weak')) {
+          errorMsg = 'Mot de passe trop faible. Utilisez au moins 8 caractères.';
+        } else if (msg.includes('invalid') && msg.includes('email')) {
+          errorMsg = 'Adresse email invalide.';
+        } else if (msg.includes('network') || msg.includes('fetch')) {
+          errorMsg = 'Erreur de connexion. Vérifiez votre connexion internet.';
+        }
+      }
+      document.getElementById('regError').textContent = errorMsg;
+      document.getElementById('regError').style.display = 'block';
+      b.innerHTML = 'Créer mon compte';
+      b.disabled = false;
+    }
+  })
+  .catch(function(){
+    errEl.textContent = 'Impossible de contacter le serveur.';
+    errEl.style.display = 'block';
+    b.innerHTML = 'Créer mon compte';
+    b.disabled = false;
+  });
 }
+</script>
+<script>
+/* Particules côté gauche */
+(function(){
+  var canvas = document.getElementById('particleCanvas');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var pts = [];
+  var N = 30;
+
+  function rnd(a,b){ return a + Math.random()*(b-a); }
+
+  function resize(){
+    var aside = canvas.parentElement;
+    canvas.width = aside.offsetWidth;
+    canvas.height = aside.offsetHeight;
+  }
+
+  function mkPt(){
+    return {
+      x: rnd(0, canvas.width),
+      y: rnd(0, canvas.height),
+      r: rnd(1, 2.4),
+      vx: rnd(-0.22, 0.22),
+      vy: rnd(-0.32, 0.08),
+      a: rnd(0.12, 0.5),
+      da: rnd(-0.003, 0.003)
+    };
+  }
+
+  function init(){
+    resize();
+    pts = [];
+    for(var i=0;i<N;i++) pts.push(mkPt());
+  }
+
+  function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(var i=0;i<pts.length;i++){
+      var p=pts[i];
+      var a=Math.max(0.05,Math.min(0.55,p.a));
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(46,204,113,'+a+')';
+      ctx.fill();
+      p.x+=p.vx; p.y+=p.vy; p.a+=p.da;
+      if(p.x<-5) p.x=canvas.width+5;
+      if(p.x>canvas.width+5) p.x=-5;
+      if(p.y<-5) p.y=canvas.height+5;
+      if(p.y>canvas.height+5) p.y=-5;
+      if(p.a<0.1) p.da=Math.abs(p.da);
+      if(p.a>0.55) p.da=-Math.abs(p.da);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', init);
+  document.addEventListener('DOMContentLoaded', function(){ init(); loop(); });
+})();
 </script>
 </body>
 </html>

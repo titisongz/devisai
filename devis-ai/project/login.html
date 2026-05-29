@@ -442,6 +442,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
           <div class="input-group"><i class="ic" data-icon="lock"></i><input class="input" id="pw" type="password" placeholder="••••••••" value="motdepasse" required></div>
         </div>
         <label class="check"><input type="checkbox" checked> Rester connecté sur cet appareil</label>
+        <div id="loginError" style="display:none;color:var(--danger);font-size:13.5px;text-align:center;padding:10px 14px;background:var(--danger-soft);border-radius:var(--r-sm);border:1px solid rgba(239,93,111,.3)"></div>
         <button class="btn btn-primary btn-lg btn-block" type="submit" id="loginBtn">Se connecter</button>
         <div class="divider-or">ou</div>
         <button class="btn btn-secondary btn-block" type="button" onclick="toast('Connexion Google — démo')"><i class="ic ic-sm" data-icon="globe"></i> Continuer avec Google</button>
@@ -561,10 +562,39 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 <script>
 function handleLogin(e){
   e.preventDefault();
-  var b=document.getElementById('loginBtn');
-  b.innerHTML='<span class="ic spin" style="width:18px;height:18px">'+icon('settings')+'</span> Connexion...';
-  b.disabled=true;
-  setTimeout(function(){window.location.href='dashboard.html';},900);
+  var b = document.getElementById('loginBtn');
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  b.innerHTML = '<span class="ic spin" style="width:18px;height:18px">'+icon('settings')+'</span> Connexion...';
+  b.disabled = true;
+
+  fetch('http://localhost:3000/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: document.getElementById('email').value,
+      password: document.getElementById('pw').value
+    })
+  })
+  .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+  .then(function(r){
+    if(r.ok && r.data.token){
+      localStorage.setItem('devisai_token', r.data.token);
+      localStorage.setItem('devisai_user', JSON.stringify(r.data.user));
+      window.location.href = 'dashboard.html';
+    } else {
+      errEl.textContent = r.data.message || 'Email ou mot de passe incorrect.';
+      errEl.style.display = 'block';
+      b.innerHTML = 'Se connecter';
+      b.disabled = false;
+    }
+  })
+  .catch(function(){
+    errEl.textContent = 'Impossible de contacter le serveur.';
+    errEl.style.display = 'block';
+    b.innerHTML = 'Se connecter';
+    b.disabled = false;
+  });
 }
 </script>
 </body>
