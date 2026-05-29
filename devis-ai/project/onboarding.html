@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Configuration · DevisAI</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
 <style id="ds">/* ============================================================
    DevisAI — Design System
    Dark premium SaaS. Indigo base, green accent.
@@ -672,9 +673,6 @@ async function handleSubmit(e) {
     is_default: true
   };
 
-  const SUPABASE_URL = 'https://sweskgpcmryjedvmfecd.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_-4E4HmtGLcYUrSCSTS0RkQ_vOmMTzwE';
-
   // Décoder le user_id directement depuis le JWT sans appel réseau
   function parseJwt(token) {
     try {
@@ -698,13 +696,7 @@ async function handleSubmit(e) {
   const userId = payload.sub;
 
   // Créer client Supabase et insérer avec le token
-  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-      headers: {
-        Authorization: 'Bearer ' + token
-      }
-    }
-  });
+  const client = getSupabaseClient(token);
 
   const { data, error } = await client
     .from('companies')
