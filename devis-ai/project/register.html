@@ -460,12 +460,38 @@ input, textarea {
       <a class="brand" href="login.html"><span class="mark"><i data-icon="logo"></i></span><span class="name">Devis<b>AI</b></span></a>
       <div class="aside-quote">Créez votre compte et <em>générez</em> votre premier devis aujourd'hui.</div>
     </div>
-    <div class="steps-mini">
-      <div class="s"><span class="n">1</span> Créez votre compte gratuit</div>
-      <div class="s"><span class="n">2</span> Configurez votre entreprise</div>
-      <div class="s"><span class="n">3</span> Dictez et exportez vos devis</div>
+    <div class="carousel-wrap" style="position:relative;overflow:hidden;min-height:70px;margin-top:24px;">
+  <div class="carousel-track" id="carouselTrack" style="display:flex;transition:transform .7s cubic-bezier(.22,.61,.36,1);">
+    <div class="carousel-slide" style="min-width:100%;padding-right:20px;">
+      <div style="font-size:clamp(14px,1.4vw,17px);font-weight:500;letter-spacing:-.02em;line-height:1.3;color:#ffffff;">Générez un devis complet et professionnel en moins de 30 secondes chrono,<br><em style="color:var(--accent);font-style:normal;">sans Excel, sans template, sans prise de tête — juste votre voix</em></div>
     </div>
-    <div class="aside-foot">Aucune carte bancaire requise.<br>14 jours d'essai sur toutes les fonctionnalités.</div>
+    <div class="carousel-slide" style="min-width:100%;padding-right:20px;">
+      <div style="font-size:clamp(14px,1.4vw,17px);font-weight:500;letter-spacing:-.02em;line-height:1.3;color:#ffffff;">Dictez à la voix et laissez l'IA analyser, structurer et organiser tout automatiquement,<br><em style="color:var(--accent);font-style:normal;">vos prestations, vos montants et vos conditions en quelques secondes</em></div>
+    </div>
+    <div class="carousel-slide" style="min-width:100%;padding-right:20px;">
+      <div style="font-size:clamp(14px,1.4vw,17px);font-weight:500;letter-spacing:-.02em;line-height:1.3;color:#ffffff;">Fini les devis bricolés sur Excel qui font fuir vos clients —<br><em style="color:var(--accent);font-style:normal;">DevisAI vous donne une image 100% professionnelle dès le premier envoi</em></div>
+    </div>
+    <div class="carousel-slide" style="min-width:100%;padding-right:20px;">
+      <div style="font-size:clamp(14px,1.4vw,17px);font-weight:500;letter-spacing:-.02em;line-height:1.3;color:#ffffff;">Partagez votre devis par WhatsApp, Telegram ou email en un seul clic,<br><em style="color:var(--accent);font-style:normal;">votre client reçoit instantanément un PDF soigné et prêt à signer</em></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:7px;margin-top:18px;" id="carouselDots">
+    <span class="cdot active" style="width:22px;height:4px;border-radius:99px;background:var(--accent);transition:.4s;"></span>
+    <span class="cdot" style="width:8px;height:4px;border-radius:99px;background:rgba(255,255,255,.25);transition:.4s;"></span>
+    <span class="cdot" style="width:8px;height:4px;border-radius:99px;background:rgba(255,255,255,.25);transition:.4s;"></span>
+    <span class="cdot" style="width:8px;height:4px;border-radius:99px;background:rgba(255,255,255,.25);transition:.4s;"></span>
+  </div>
+</div>
+    <div class="aside-foot">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="display:flex;">
+      <span style="width:30px;height:30px;border-radius:50%;border:2px solid #16164a;background:linear-gradient(150deg,var(--accent),var(--accent-700));display:inline-block;margin-left:-9px;"></span>
+      <span style="width:30px;height:30px;border-radius:50%;border:2px solid #16164a;background:linear-gradient(150deg,#8d86ff,#5b54d6);display:inline-block;margin-left:-9px;"></span>
+      <span style="width:30px;height:30px;border-radius:50%;border:2px solid #16164a;background:linear-gradient(150deg,#f5b14c,#d98a2b);display:inline-block;margin-left:-9px;"></span>
+    </div>
+    <span style="font-size:13px;color:var(--faint);">+2 400 freelances &amp; agences font confiance à DevisAI</span>
+  </div>
+</div>
   </aside>
 
   <main class="auth-main">
@@ -626,6 +652,22 @@ input, textarea {
     document.querySelectorAll('.modal-scrim').forEach(function(s){
       s.addEventListener('click',function(e){if(e.target===s)window.closeModal(s);});
     });
+    (function(){
+      var track = document.getElementById('carouselTrack');
+      var dots = document.querySelectorAll('.cdot');
+      if(!track) return;
+      var current = 0;
+      var total = 4;
+      function goTo(n){
+        current = n;
+        track.style.transform = 'translateX(-' + (n * 100) + '%)';
+        dots.forEach(function(d, i){
+          d.style.width = i === n ? '22px' : '8px';
+          d.style.background = i === n ? 'var(--accent)' : 'rgba(255,255,255,.25)';
+        });
+      }
+      setInterval(function(){ goTo((current + 1) % total); }, 8000);
+    })();
   });
 })();
 </script>

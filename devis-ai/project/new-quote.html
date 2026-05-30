@@ -470,6 +470,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 </head>
 <body>
 <div class="drawer-scrim"></div>
@@ -518,8 +519,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
           <h2 class="step-title">Quelle entreprise émet ce devis ?</h2>
           <p class="step-sub">Ses coordonnées et son logo apparaîtront en en-tête.</p>
           <div class="co-grid">
-            <div class="co-card sel" data-co="Bâti Plus" onclick="selCo(this)"><span class="logo">BP</span><div class="info"><div class="nm">Bâti Plus Sénégal</div><div class="em">contact@batiplus.sn</div></div><span class="tick"><i class="ic ic-sm" data-icon="check"></i></span></div>
-            <div class="co-card" data-co="Digital Sahel" onclick="selCo(this)"><span class="logo v">DS</span><div class="info"><div class="nm">Digital Sahel</div><div class="em">hello@digitalsahel.com</div></div><span class="tick"><i class="ic ic-sm" data-icon="check"></i></span></div>
+            <div id="coList" style="display:contents"></div>
             <a class="co-card co-add" href="companies.html"><i class="ic" data-icon="plus"></i> Ajouter une entreprise</a>
           </div>
           <div class="nq-actions"><button class="btn btn-primary btn-lg" onclick="goStep(2)">Continuer <i class="ic ic-sm" data-icon="arrowR"></i></button></div>
@@ -750,7 +750,29 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 })();
 </script>
 <script>
-/* step nav */
+checkAuth();
+
+var selectedCompanyId = null;
+var generatedQuote = null;
+
+async function loadCompanies() {
+  const token = getToken();
+  const client = getSupabaseClient(token);
+  const { data, error } = await client.from('companies').select('*').order('created_at', { ascending: false });
+  const list = document.getElementById('coList');
+  if (error || !data || data.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:14px;padding:12px 0;">Aucune entreprise configurée.</p>';
+    return;
+  }
+  list.innerHTML = data.map(function(co, i) {
+    var initials = co.name.split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+    var sel = i === 0 ? 'sel' : '';
+    if (i === 0) selectedCompanyId = co.id;
+    return '<div class="co-card ' + sel + '" data-co-id="' + co.id + '" onclick="selCo(this)"><span class="logo">' + initials + '</span><div class="info"><div class="nm">' + co.name + '</div><div class="em">' + (co.email || '') + '</div></div><span class="tick"><i class="ic ic-sm" data-icon="check"></i></span></div>';
+  }).join('');
+  hydrateIcons();
+}
+
 function goStep(n){
   [1,2,3].forEach(function(i){document.getElementById('step'+i).classList.toggle('show',i===n);});
   document.getElementById('dot1').className='st '+(n>1?'done':(n===1?'active':''));
@@ -759,12 +781,15 @@ function goStep(n){
   document.getElementById('line1').className='line '+(n>1?'fill':'');
   document.getElementById('line2').className='line '+(n>2?'fill':'');
   document.getElementById('stickyActions').style.display=(n===3)?'flex':'none';
-  document.querySelector('.content').scrollTop=0;
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function selCo(el){document.querySelectorAll('.co-card').forEach(function(c){c.classList.remove('sel');});el.classList.add('sel');}
 
-/* mode */
+function selCo(el){
+  document.querySelectorAll('.co-card').forEach(function(c){c.classList.remove('sel');});
+  el.classList.add('sel');
+  selectedCompanyId = el.getAttribute('data-co-id');
+}
+
 function setMode(m){
   var v=m==='voice';
   document.getElementById('voicePane').style.display=v?'block':'none';
@@ -773,55 +798,125 @@ function setMode(m){
   document.getElementById('tabText').classList.toggle('active',!v);
 }
 
-/* voice recording demo */
-var recording=false,typingTimer=null;
-var SAMPLE="Bonjour, c'est pour la société Teranga. Ils veulent un site e-commerce avec catalogue produits, panier et paiement mobile money — Wave et Orange Money. Prévoir la conception des maquettes, le développement, une formation de l'équipe sur deux jours, et une maintenance de 6 mois. Délai souhaité : 3 semaines.";
+var recognition = null;
+var isRecording = false;
+var fullTranscript = '';
+
 function toggleRec(){
-  recording=!recording;
-  var btn=document.getElementById('micBtn'),wave=document.getElementById('wave'),hint=document.getElementById('micHint');
-  if(recording){
-    btn.classList.remove('idle');btn.classList.add('rec');
-    wave.classList.add('on');
-    hint.innerHTML='<span class="rec-dot"></span>Enregistrement... appuyez pour arrêter';
-    typeTranscript();
-  }else{
-    btn.classList.add('idle');btn.classList.remove('rec');
-    wave.classList.remove('on');
-    hint.textContent='Appuyez pour reprendre';
-    clearTimeout(typingTimer);
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    toast('La reconnaissance vocale n\'est pas supportée sur ce navigateur. Utilisez Chrome.', 'x');
+    return;
+  }
+  if (isRecording) {
+    stopRec();
+  } else {
+    startRec();
   }
 }
-function typeTranscript(){
-  var el=document.getElementById('transcript');
-  el.innerHTML='';
-  var i=0;
-  (function step(){
-    if(!recording)return;
-    el.innerHTML=SAMPLE.slice(0,i)+'<span class="cursor"></span>';
-    i++;
-    if(i<=SAMPLE.length){typingTimer=setTimeout(step,22);}
-    else{el.innerHTML=SAMPLE;recording=false;var btn=document.getElementById('micBtn');btn.classList.add('idle');btn.classList.remove('rec');document.getElementById('wave').classList.remove('on');document.getElementById('micHint').innerHTML='✓ Transcription terminée — vous pouvez générer le devis';}
-  })();
+
+function startRec(){
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'fr-FR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  isRecording = true;
+  var btn = document.getElementById('micBtn');
+  var wave = document.getElementById('wave');
+  var hint = document.getElementById('micHint');
+  btn.classList.remove('idle'); btn.classList.add('rec');
+  wave.classList.add('on');
+  hint.innerHTML = '<span class="rec-dot"></span>Enregistrement... appuyez pour arrêter';
+  recognition.onresult = function(e) {
+    var interim = '';
+    var final = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) { final += e.results[i][0].transcript; }
+      else { interim += e.results[i][0].transcript; }
+    }
+    if (final) fullTranscript += final + ' ';
+    var el = document.getElementById('transcript');
+    el.innerHTML = fullTranscript + '<span style="color:var(--faint)">' + interim + '</span><span class="cursor"></span>';
+  };
+  recognition.onerror = function(e) {
+    toast('Erreur microphone : ' + e.error, 'x');
+    stopRec();
+  };
+  recognition.start();
 }
 
-/* generate */
-function generate(){
-  var hasVoice=document.getElementById('transcript').textContent.indexOf('Teranga')>-1;
-  var hasText=(document.getElementById('brief').value||'').trim().length>10;
-  if(!hasVoice && !hasText){toast('Décrivez d\'abord la prestation','mic');return;}
-  goStep(3);
-  document.getElementById('genLoad').style.display='flex';
-  document.getElementById('quoteOut').style.display='none';
-  var msgs=['DevisAI analyse votre demande...','Identification des prestations...','Calcul des montants et TVA...','Mise en forme du devis...'];
-  var k=0;var mi=setInterval(function(){k++;if(msgs[k])document.getElementById('genMsg').textContent=msgs[k];},650);
-  setTimeout(function(){
-    clearInterval(mi);
-    document.getElementById('genLoad').style.display='none';
-    document.getElementById('quoteOut').style.display='block';
-    document.getElementById('quoteOut').style.animation='fadeUp .5s var(--ease)';
-  },2700);
+function stopRec(){
+  if (recognition) recognition.stop();
+  isRecording = false;
+  var btn = document.getElementById('micBtn');
+  var wave = document.getElementById('wave');
+  var hint = document.getElementById('micHint');
+  btn.classList.add('idle'); btn.classList.remove('rec');
+  wave.classList.remove('on');
+  hint.textContent = fullTranscript ? '✓ Transcription terminée — vous pouvez générer le devis' : 'Appuyez pour parler';
 }
-function saveQuote(){toast('Devis DV-2026-0043 sauvegardé','checkCircle');setTimeout(function(){window.location.href='quotes.html';},900);}
+
+async function generate(){
+  var description = '';
+  var activeMode = document.getElementById('tabVoice').classList.contains('active') ? 'voice' : 'text';
+  if (activeMode === 'voice') {
+    description = fullTranscript.trim();
+  } else {
+    description = (document.getElementById('brief').value || '').trim();
+  }
+  if (!description || description.length < 10) {
+    toast('Décrivez d\'abord la prestation', 'mic');
+    return;
+  }
+  if (!selectedCompanyId) {
+    toast('Sélectionnez une entreprise', 'building');
+    return;
+  }
+  goStep(3);
+  document.getElementById('genLoad').style.display = 'flex';
+  document.getElementById('quoteOut').style.display = 'none';
+  var msgs = ['DevisAI analyse votre demande...', 'Identification des prestations...', 'Calcul des montants...', 'Mise en forme du devis...'];
+  var k = 0;
+  var mi = setInterval(function(){ k++; if(msgs[k]) document.getElementById('genMsg').textContent = msgs[k]; }, 700);
+  try {
+    var token = getToken();
+    var res = await fetch('http://localhost:3000/api/quotes/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ company_id: selectedCompanyId, description: description })
+    });
+    var result = await res.json();
+    clearInterval(mi);
+    if (!res.ok) throw new Error(result.error || 'Erreur serveur');
+    generatedQuote = result.quote;
+    renderQuote(result.quote);
+    document.getElementById('genLoad').style.display = 'none';
+    document.getElementById('quoteOut').style.display = 'block';
+  } catch(err) {
+    clearInterval(mi);
+    goStep(2);
+    toast('Erreur : ' + err.message, 'x');
+  }
+}
+
+function renderQuote(quote) {
+  var content = quote.content || {};
+  var prestations = content.prestations || [];
+  var rows = prestations.map(function(p) {
+    return '<tr><td>' + p.description + (p.sous_detail ? '<div class="desc-sub">' + p.sous_detail + '</div>' : '') + '</td><td class="r">' + p.quantite + '</td><td class="r">' + fcfa(p.prix_unitaire) + '</td><td class="r">' + fcfa(p.total) + '</td></tr>';
+  }).join('');
+  var tva = content.taux_taxe > 0 ? '<div class="tr"><span>Taxes / TVA (' + content.taux_taxe + '%)</span><span class="num">' + fcfa(content.montant_taxe) + '</span></div>' : '';
+  document.getElementById('quoteOut').innerHTML = '<h2 class="step-title" style="display:flex;align-items:center;gap:10px">Votre devis est prêt <span class="badge badge-accent"><i class="ic ic-sm" data-icon="check"></i> Généré par IA</span></h2><p class="step-sub">Vérifiez le contenu puis exportez-le ou sauvegardez-le.</p><div class="quote-doc"><div class="qd-bar"></div><div class="qd-in"><div class="qd-head"><div class="qd-meta"><div class="tt">DEVIS</div><div class="sm">N° <b>' + quote.quote_number + '</b><br>Validité : ' + (content.validite_jours || 30) + ' jours</div></div></div><div class="qd-client"><div class="blk"><div class="k">Client</div><div class="v"><b>' + (content.client_name || '') + '</b><br>' + (content.client_address || '') + '<br>' + (content.client_email || '') + '</div></div><div class="blk"><div class="k">Objet</div><div class="v">' + (content.objet || '') + '</div></div></div><table class="qd-table"><thead><tr><th>Description</th><th class="r">Qté</th><th class="r">Prix unitaire</th><th class="r">Total HT</th></tr></thead><tbody>' + rows + '</tbody></table><div class="qd-totals"><div class="tr"><span>Total HT</span><span class="num">' + fcfa(content.total_ht) + '</span></div>' + tva + '<div class="tr ttc"><span>Total TTC</span><span class="num">' + fcfa(content.total_ttc) + '</span></div></div><div class="qd-foot"><div class="cond"><b>Conditions de paiement</b>' + (content.conditions_paiement || '') + '</div><div class="qd-sign">Signature &amp; cachet<div class="line"></div></div></div></div></div><div class="nq-actions"><button class="btn btn-ghost btn-lg" onclick="goStep(2)"><i class="ic ic-sm" data-icon="edit"></i> Modifier</button><button class="btn btn-secondary btn-lg" onclick="toast(\'Export PDF — bientôt disponible\',\'download\')"><i class="ic ic-sm" data-icon="download"></i> Exporter en PDF</button><button class="btn btn-primary btn-lg" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Sauvegarder</button></div>';
+  hydrateIcons();
+}
+
+function saveQuote(){
+  if (!generatedQuote) return;
+  toast('Devis ' + generatedQuote.quote_number + ' sauvegardé', 'checkCircle');
+  setTimeout(function(){ window.location.href = 'quotes.html'; }, 900);
+}
+
+document.addEventListener('DOMContentLoaded', function(){ loadCompanies(); });
 </script>
 </body>
 </html>

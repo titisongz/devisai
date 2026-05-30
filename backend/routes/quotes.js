@@ -39,26 +39,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/quotes/:id — détail d'un devis
-router.get('/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const { data, error } = await supabase
-      .from('quotes')
-      .select('*, companies(*)')
-      .eq('id', id)
-      .eq('user_id', req.user.sub)
-      .single();
-
-    if (error || !data) return res.status(404).json({ error: 'Devis introuvable' });
-
-    res.json({ quote: data });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
 // POST /api/quotes/generate — génère un devis via Claude
 router.post('/generate', async (req, res) => {
   const { company_id, description } = req.body;
@@ -113,6 +93,26 @@ router.post('/generate', async (req, res) => {
     if (saveError) return res.status(400).json({ error: saveError.message });
 
     res.status(201).json({ quote: savedQuote });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/quotes/:id — détail d'un devis
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from('quotes')
+      .select('*, companies(*)')
+      .eq('id', id)
+      .eq('user_id', req.user.sub)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Devis introuvable' });
+
+    res.json({ quote: data });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

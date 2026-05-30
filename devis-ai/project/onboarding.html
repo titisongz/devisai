@@ -589,6 +589,11 @@ input, textarea {
   window.fcfa=function(n){return new Intl.NumberFormat('fr-FR').format(n)+' FCFA';};
 
   document.addEventListener('DOMContentLoaded',function(){
+    document.getElementById('cn').value = '';
+    document.getElementById('ce').value = '';
+    document.getElementById('cp').value = '';
+    document.getElementById('cw').value = '';
+    document.getElementById('ca').value = '';
     hydrateIcons();
     initDrawer();
     reveal();
