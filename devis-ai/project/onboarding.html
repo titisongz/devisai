@@ -400,6 +400,9 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .ob-foot .skip{color:var(--faint);font-weight:600;font-size:14px}
 .ob-foot .grow{flex:1}
 @media (max-width:640px){.form-grid{grid-template-columns:1fr}.logo-drop{flex-direction:column;align-items:stretch}.logo-preview{width:100%;height:120px}}
+input, textarea {
+  caret-color: #ffffff;
+}
 </style>
 </head>
 <body>
@@ -417,12 +420,12 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <p>Ces informations apparaîtront en en-tête de tous vos devis. Vous pourrez les modifier à tout moment.</p>
   </div>
 
-  <form class="form-grid stagger" data-base="80" data-step="55" onsubmit="handleSubmit(event)">
-    <div class="field"><label for="cn">Nom de l'entreprise</label><input class="input" id="cn" placeholder="Ex : Bâti Plus Sénégal" value="Bâti Plus Sénégal" required></div>
-    <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" required></div></div>
-    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" placeholder="+221 ..." value="+221 77 845 12 30" required></div></div>
-    <div class="field"><label for="cw">Site web <span class="opt">(optionnel)</span></label><div class="input-group"><i class="ic" data-icon="globe"></i><input class="input" id="cw" placeholder="www.entreprise.com" value="www.batiplus.sn"></div></div>
-    <div class="field full"><label for="ca">Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="ca" placeholder="Rue, ville, pays" value="Rue 12 x Bd du Centenaire, Dakar, Sénégal" required></div></div>
+  <form class="form-grid stagger" data-base="80" data-step="55" onsubmit="handleSubmit(event)" autocomplete="off">
+    <div class="field"><label for="cn">Nom de l'entreprise</label><input class="input" id="cn" placeholder="Ex : Bâti Plus Sénégal" value="Bâti Plus Sénégal" autocomplete="new-password" required></div>
+    <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" autocomplete="new-password" required></div></div>
+    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" placeholder="+221 ..." value="+221 77 845 12 30" autocomplete="new-password" required></div></div>
+    <div class="field"><label for="cw">Site web <span class="opt">(optionnel)</span></label><div class="input-group"><i class="ic" data-icon="globe"></i><input class="input" id="cw" placeholder="www.entreprise.com" value="www.batiplus.sn" autocomplete="new-password"></div></div>
+    <div class="field full"><label for="ca">Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="ca" placeholder="Rue, ville, pays" value="Rue 12 x Bd du Centenaire, Dakar, Sénégal" autocomplete="new-password" required></div></div>
 
     <div class="field full">
       <label>Logo de l'entreprise</label>
@@ -484,7 +487,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <a class="skip" href="dashboard.html">Passer pour l'instant</a>
     <div class="grow"></div>
     <div id="obError" style="display:none;color:var(--danger);font-size:13.5px;padding:8px 14px;background:var(--danger-soft);border-radius:var(--r-sm);border:1px solid rgba(239,93,111,.3)"></div>
-    <button class="btn btn-primary btn-lg" onclick="handleSubmit(event)">Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i></button>
+    <button class="btn btn-primary btn-lg" id="submitBtn" onclick="handleSubmit(event)">Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i></button>
   </div>
 </footer>
 
@@ -626,10 +629,15 @@ function showError(msg) {
 
 async function handleSubmit(e) {
   e.preventDefault();
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ic spin" style="width:18px;height:18px">' + icon('settings') + '</span> Enregistrement…';
   document.getElementById('obError').style.display = 'none';
 
   const token = localStorage.getItem('devisai_token');
   if (!token) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
     window.location.href = 'login.html';
     return;
   }
@@ -637,6 +645,8 @@ async function handleSubmit(e) {
   // Vérification logo
   const logoInput = document.getElementById('logoInput');
   if (!logoInput || !logoInput.files || logoInput.files.length === 0) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
     showError('Veuillez uploader le logo de votre entreprise.');
     return;
   }
@@ -648,6 +658,8 @@ async function handleSubmit(e) {
   blankCanvas.width = canvas.width;
   blankCanvas.height = canvas.height;
   if (signatureData === blankCanvas.toDataURL('image/png')) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
     showError('Veuillez apposer votre signature avant de continuer.');
     return;
   }
@@ -689,6 +701,8 @@ async function handleSubmit(e) {
 
   const payload = parseJwt(token);
   if (!payload || !payload.sub) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
     window.location.href = 'login.html';
     return;
   }
@@ -718,6 +732,8 @@ async function handleSubmit(e) {
   console.log('Insert result:', data, error);
 
   if (error) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
     showError('Erreur : ' + error.message);
     return;
   }
