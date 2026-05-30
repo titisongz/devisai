@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
 const authMiddleware = require('../middleware/auth');
-const OpenAI = require('openai');
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const Anthropic = require('@anthropic-ai/sdk');
+const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 // Toutes les routes sont protégées sauf /share
 router.use(authMiddleware);
@@ -60,7 +59,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/quotes/generate — génère un devis via OpenAI
+// POST /api/quotes/generate — génère un devis via Claude
 router.post('/generate', async (req, res) => {
   const { company_id, description } = req.body;
 
@@ -81,34 +80,20 @@ router.post('/generate', async (req, res) => {
       return res.status(404).json({ error: 'Entreprise introuvable' });
     }
 
-    // Appel OpenAI GPT-4o
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `Tu es un assistant de génération de devis professionnels
-pour des entreprises africaines francophones.
-À partir de la description fournie, génère un devis structuré
-en JSON avec les champs : client_name, client_address,
-client_email, objet, prestations (array de : description,
-quantite, prix_unitaire, total), total_ht, tva (18%),
-total_ttc, conditions_paiement, validite_jours (30).
-Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
-        },
-        {
-          role: 'user',
-          content: description,
-        },
-      ],
-      response_format: { type: 'json_object' },
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1024,
+      system: `Tu es un assistant de génération de devis professionnels pour des entreprises africaines francophones. À partir de la description fournie, génère un devis structuré en JSON avec exactement ces champs : client_name (mettre "[Nom du client]" si non précisé), client_address (mettre "[Adresse du client]" si non précisé), client_email (mettre "[Email du client]" si non précisé), objet (résumer l'objet du devis), prestations (array de : description, sous_detail, quantite, prix_unitaire, total — déduire les prestations logiques depuis la description, mettre prix_unitaire à 0 si non précisé), total_ht (somme des totaux des prestations), taux_taxe (nombre entre 0 et 100, déduire du contexte ou mettre 0 si non précisé), montant_taxe (calculer depuis total_ht et taux_taxe), total_ttc (total_ht + montant_taxe), conditions_paiement (mettre "50% à la commande, 50% à la livraison" si non précisé), delai_realisation (mettre "[À préciser]" si non mentionné), validite_jours (30 par défaut). Les montants sont en FCFA par défaut sauf si une autre devise est mentionnée. Ne jamais inventer de données sensibles — utiliser des placeholders clairs entre crochets pour tout ce qui manque. Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
+      messages: [{ role: 'user', content: description }]
     });
 
     let quoteData;
     try {
-      quoteData = JSON.parse(completion.choices[0].message.content);
+      const rawText = message.content[0].text;
+      const clean = rawText.replace(/```json|```/g, '').trim();
+      quoteData = JSON.parse(clean);
     } catch {
-      return res.status(500).json({ error: 'Réponse OpenAI invalide' });
+      return res.status(500).json({ error: 'Réponse Claude invalide' });
     }
 
     const quoteNumber = await generateQuoteNumber();

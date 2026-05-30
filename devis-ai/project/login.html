@@ -400,6 +400,13 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .divider-or::before,.divider-or::after{content:"";flex:1;height:1px;background:var(--border)}
 .swap-line{text-align:center;color:var(--muted);font-size:14px;margin-top:24px}
 .swap-line a{color:var(--accent);font-weight:600}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #10102f inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+}
 @media (max-width:900px){
   .auth{grid-template-columns:1fr}
   .auth-aside{display:none}
@@ -437,17 +444,23 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
       <form class="form" onsubmit="handleLogin(event)">
         <div class="field">
           <label for="email">Adresse e-mail</label>
-          <div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="email" type="email" placeholder="vous@entreprise.com" value="amadou@batiplus.sn" required></div>
+          <div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="email" type="email" placeholder="vous@entreprise.com" required></div>
         </div>
         <div class="field">
-          <div class="between"><label for="pw">Mot de passe</label><a class="link" href="#">Oublié ?</a></div>
-          <div class="input-group"><i class="ic" data-icon="lock"></i><input class="input" id="pw" type="password" placeholder="••••••••" value="motdepasse" required></div>
+          <div class="between"><label for="pw">Mot de passe</label><a class="link" href="#" onclick="handleForgotPassword(event)">Mot de passe oublié ?</a></div>
+          <div style="position:relative;">
+            <i class="ic" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--faint);pointer-events:none;" data-icon="lock"></i>
+            <input class="input" id="pw" type="password" placeholder="••••••••" required style="padding-left:44px;padding-right:48px;width:100%;">
+            <button type="button" onclick="togglePw()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--faint);cursor:pointer;display:flex;align-items:center;padding:0;" id="eyeBtn">
+              <i class="ic" data-icon="eye" id="eyeIcon"></i>
+            </button>
+          </div>
         </div>
         <label class="check"><input type="checkbox" checked> Rester connecté sur cet appareil</label>
         <div id="loginError" style="display:none;color:var(--danger);font-size:13.5px;text-align:center;padding:10px 14px;background:var(--danger-soft);border-radius:var(--r-sm);border:1px solid rgba(239,93,111,.3)"></div>
         <button class="btn btn-primary btn-lg btn-block" type="submit" id="loginBtn">Se connecter</button>
         <div class="divider-or">ou</div>
-        <button class="btn btn-secondary btn-block" type="button" onclick="toast('Connexion Google — démo')"><i class="ic ic-sm" data-icon="globe"></i> Continuer avec Google</button>
+        <button class="btn btn-secondary btn-block" type="button" onclick="handleGoogleLogin()"><i class="ic ic-sm" data-icon="globe"></i> Continuer avec Google</button>
       </form>
       <p class="swap-line">Pas encore de compte ? <a href="register.html">S'inscrire</a></p>
     </div>
@@ -562,6 +575,55 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 })();
 </script>
 <script>
+function togglePw(){
+  var input = document.getElementById('pw');
+  var icon = document.getElementById('eyeIcon');
+  if(input.type === 'password'){
+    input.type = 'text';
+    icon.setAttribute('data-icon','eye');
+    icon.innerHTML = window.icon('eye');
+  } else {
+    input.type = 'password';
+    icon.setAttribute('data-icon','eye');
+    icon.innerHTML = window.icon('eye');
+  }
+  hydrateIcons();
+}
+
+async function handleGoogleLogin(){
+  try {
+    const client = getSupabaseClient();
+    const { error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/devis-ai/project/dashboard.html'
+      }
+    });
+    if(error) toast('Erreur Google : ' + error.message, 'x');
+  } catch(err){
+    toast('Erreur de connexion Google', 'x');
+  }
+}
+
+async function handleForgotPassword(e){
+  e.preventDefault();
+  var email = document.getElementById('email').value.trim();
+  if(!email){
+    toast('Entrez votre email d\'abord', 'mail');
+    document.getElementById('email').focus();
+    return;
+  }
+  var client = getSupabaseClient();
+  var { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/devis-ai/project/login.html'
+  });
+  if(error){
+    toast('Erreur : ' + error.message, 'x');
+  } else {
+    toast('Email de réinitialisation envoyé !', 'check');
+  }
+}
+
 function handleLogin(e){
   e.preventDefault();
   var b = document.getElementById('loginBtn');
