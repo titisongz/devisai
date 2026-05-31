@@ -432,9 +432,9 @@ input:-webkit-autofill:active {
 
   <form class="form-grid stagger" data-base="80" data-step="55" onsubmit="handleSubmit(event)" autocomplete="off">
     <div class="field"><label for="cn">Nom de l'entreprise</label><input class="input" id="cn" placeholder="Ex : Bâti Plus Sénégal" value="Bâti Plus Sénégal" autocomplete="organization" required></div>
-    <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" autocomplete="organization-email" required></div></div>
-    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" placeholder="+221 ..." value="+221 77 845 12 30" autocomplete="tel" required></div></div>
-    <div class="field"><label for="cw">Site web <span class="opt">(optionnel)</span></label><div class="input-group"><i class="ic" data-icon="globe"></i><input class="input" id="cw" placeholder="www.entreprise.com" value="www.batiplus.sn" autocomplete="url"></div></div>
+    <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" autocomplete="organization-email"></div></div>
+    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" type="tel" pattern="[6][0-9]{8}" maxlength="9" placeholder="+237 6XX XXX XXX" autocomplete="tel" required></div></div>
+    <div class="field"><label for="cw">Site web <span class="opt">(optionnel)</span></label><div class="input-group"><i class="ic" data-icon="globe"></i><input class="input" id="cw" type="url" placeholder="www.entreprise.com" value="www.batiplus.sn" autocomplete="url"></div></div>
     <div class="field full"><label for="ca">Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="ca" placeholder="Rue, ville, pays" value="Rue 12 x Bd du Centenaire, Dakar, Sénégal" autocomplete="street-address" required></div></div>
 
     <div class="field full">
@@ -653,19 +653,51 @@ async function handleSubmit(e) {
   const emailEntreprise = document.getElementById('ce')?.value?.trim();
   const telephone = document.getElementById('cp')?.value?.trim();
   const adresse = document.getElementById('ca')?.value?.trim();
-  const logoInput = document.getElementById('logoInput');
-  const sigCanvas = document.getElementById('signatureCanvas');
-  const blankRef = document.createElement('canvas');
-  if (sigCanvas) { blankRef.width = sigCanvas.width; blankRef.height = sigCanvas.height; }
-  const signatureVide = !sigCanvas || sigCanvas.toDataURL() === blankRef.toDataURL();
+  const siteWeb = document.getElementById('cw')?.value?.trim();
 
-  if (!nomEntreprise || !emailEntreprise || !telephone || !adresse) {
+  // Champs obligatoires
+  if (!nomEntreprise || !telephone || !adresse) {
     btn.disabled = false;
     btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
-    alert('Veuillez remplir tous les champs obligatoires : nom, email, téléphone et adresse.');
+    alert('Veuillez remplir tous les champs obligatoires : nom, téléphone et adresse.');
     return;
   }
 
+  // Validation email si rempli
+  if (emailEntreprise) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailEntreprise)) {
+      btn.disabled = false;
+      btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
+      alert('Veuillez entrer une adresse email valide.');
+      return;
+    }
+  }
+
+  // Validation téléphone Cameroun (9 chiffres commençant par 6)
+  const telNettoye = telephone.replace(/[\s\-\+237]/g, '');
+  const telRegex = /^6[0-9]{8}$/;
+  if (!telRegex.test(telNettoye)) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
+    alert('Veuillez entrer un numéro de téléphone camerounais valide (ex: 655 123 456).');
+    return;
+  }
+
+  // Validation site web si rempli
+  if (siteWeb) {
+    try {
+      new URL(siteWeb.startsWith('http') ? siteWeb : 'https://' + siteWeb);
+    } catch {
+      btn.disabled = false;
+      btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
+      alert('Veuillez entrer une adresse de site web valide (ex: www.monsite.com).');
+      return;
+    }
+  }
+
+  // Validation logo
+  const logoInput = document.getElementById('logoInput');
   if (!logoInput || !logoInput.files || logoInput.files.length === 0) {
     btn.disabled = false;
     btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
@@ -673,7 +705,11 @@ async function handleSubmit(e) {
     return;
   }
 
-  if (signatureVide) {
+  // Validation signature
+  const sigCanvas = document.getElementById('signatureCanvas');
+  const canvasVide = document.createElement('canvas');
+  if (sigCanvas) { canvasVide.width = sigCanvas.width; canvasVide.height = sigCanvas.height; }
+  if (!sigCanvas || sigCanvas.toDataURL() === canvasVide.toDataURL()) {
     btn.disabled = false;
     btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
     alert('Veuillez dessiner votre signature.');
