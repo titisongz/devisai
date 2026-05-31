@@ -302,6 +302,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spin{animation:spin .9s linear infinite}
 @keyframes pulseRing{0%{box-shadow:0 0 0 0 var(--accent-glow)}70%{box-shadow:0 0 0 22px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes shimmer{100%{background-position:200% 0}}
 .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.05) 25%,rgba(255,255,255,.12) 37%,rgba(255,255,255,.05) 63%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px}
 @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
@@ -385,7 +386,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .step-sub{color:var(--muted);font-size:15px;margin-bottom:22px}
 
 /* company cards */
-.co-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.co-grid{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:14px}
 .co-card{display:flex;align-items:center;gap:14px;padding:18px;cursor:pointer;border:1.5px solid var(--border);position:relative;transition:.18s}
 .co-card:hover{border-color:var(--border-2)}
 .co-card.sel{border-color:var(--accent);background:var(--accent-soft)}
@@ -460,7 +461,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .sticky-actions{display:none}
 
 @media (max-width:640px){
-  .co-grid{grid-template-columns:1fr}
+  .co-grid{flex-direction:column}
   .nq-actions{display:none}
   .sticky-actions{display:flex;position:fixed;left:0;right:0;bottom:var(--bottomnav-h);z-index:34;gap:10px;padding:12px 14px calc(12px);background:rgba(13,13,43,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border)}
   .sticky-actions .btn{flex:1;padding:0 8px;font-size:13.5px}
@@ -486,7 +487,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
       <a href="#" onclick="toast('Paramètres — bientôt disponible','settings')"><i class="ic" data-icon="settings"></i> Paramètres</a>
     </nav>
     <div class="sidebar-foot">
-      <div class="user-card"><span class="avatar">AD</span><div class="meta"><div class="nm">Amadou Diallo</div><div class="em">amadou@batiplus.sn</div></div><i class="ic ic-sm faint" data-icon="logout"></i></div>
+      <div class="user-card"><span class="avatar user-initiales">AD</span><div class="meta"><div class="nm user-name">Amadou Diallo</div><div class="em user-email">amadou@batiplus.sn</div></div><i class="ic ic-sm faint" data-icon="logout"></i></div>
     </div>
   </aside>
 
@@ -755,23 +756,112 @@ checkAuth();
 var selectedCompanyId = null;
 var generatedQuote = null;
 
-async function loadCompanies() {
-  const token = getToken();
-  const client = getSupabaseClient(token);
-  const { data, error } = await client.from('companies').select('*').order('created_at', { ascending: false });
-  const list = document.getElementById('coList');
-  if (error || !data || data.length === 0) {
-    list.innerHTML = '<p style="color:var(--muted);font-size:14px;padding:12px 0;">Aucune entreprise configurée.</p>';
-    return;
+async function chargerEntreprises() {
+  const select = document.getElementById('company-select');
+  const coList = document.getElementById('coList');
+
+  const cacheKey = 'devisai_companies_cache';
+  const cacheTime = 'devisai_companies_cache_time';
+  const maintenant = Date.now();
+  const dureeCache = 5 * 60 * 1000;
+
+  const cachedData = localStorage.getItem(cacheKey);
+  const cachedTime = localStorage.getItem(cacheTime);
+
+  let companies;
+
+  if (cachedData && cachedTime && (maintenant - parseInt(cachedTime)) < dureeCache) {
+    companies = JSON.parse(cachedData);
+  } else {
+    if (coList) {
+      coList.innerHTML = Array(2).fill(`
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 16px 20px;
+          background: #1a1a4e;
+          border-radius: 12px;
+          min-width: 220px;
+          max-width: 300px;
+          animation: pulse 1.5s ease-in-out infinite;
+        ">
+          <div style="width:52px; height:52px; border-radius:10px; background:#2a2a6e; flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="height:12px; background:#2a2a6e; border-radius:6px; width:70%; margin-bottom:8px;"></div>
+            <div style="height:10px; background:#2a2a6e; border-radius:6px; width:40%;"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const token = await getValidToken();
+    if (!token) return;
+    const { data } = await getSupabaseClient(token)
+      .from('companies')
+      .select('id, name, logo_url, brand_color');
+    companies = data || [];
+    localStorage.setItem(cacheKey, JSON.stringify(companies));
+    localStorage.setItem(cacheTime, maintenant.toString());
   }
-  list.innerHTML = data.map(function(co, i) {
-    var initials = co.name.split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
-    var sel = i === 0 ? 'sel' : '';
-    if (i === 0) selectedCompanyId = co.id;
-    return '<div class="co-card ' + sel + '" data-co-id="' + co.id + '" onclick="selCo(this)"><span class="logo">' + initials + '</span><div class="info"><div class="nm">' + co.name + '</div><div class="em">' + (co.email || '') + '</div></div><span class="tick"><i class="ic ic-sm" data-icon="check"></i></span></div>';
-  }).join('');
-  hydrateIcons();
+
+  const carteHTML = (c) => `
+    <div class="company-card" data-id="${c.id}" onclick="selectCompany('${c.id}')" style="
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      background: #1a1a4e;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 220px;
+      max-width: 300px;
+    "
+    onmouseover="this.style.borderColor='#2ecc71'; this.style.background='#1f1f5e'"
+    onmouseout="this.style.borderColor='transparent'; this.style.background='#1a1a4e'">
+      <div style="
+        width: 52px;
+        height: 52px;
+        border-radius: 10px;
+        background: ${c.brand_color || '#2ecc71'};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+      ">
+        ${c.logo_url
+          ? `<img src="${c.logo_url}" alt="${c.name}" style="width:100%; height:100%; object-fit:cover;">`
+          : `<span style="color:#fff; font-weight:700; font-size:22px;">${c.name[0].toUpperCase()}</span>`
+        }
+      </div>
+      <span style="
+        color:#ffffff;
+        font-size:14px;
+        font-weight:500;
+        line-height:1.3;
+        word-break: break-word;
+      ">${c.name}</span>
+    </div>
+  `;
+
+  if (select) {
+    select.disabled = false;
+    select.innerHTML = companies.length === 0
+      ? '<option value="">Aucune entreprise configurée</option>'
+      : companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+
+  if (coList) {
+    coList.innerHTML = companies.length === 0
+      ? '<p style="color:#888;">Aucune entreprise configurée</p>'
+      : companies.map(carteHTML).join('');
+  }
 }
+
+chargerEntreprises();
 
 function goStep(n){
   [1,2,3].forEach(function(i){document.getElementById('step'+i).classList.toggle('show',i===n);});
@@ -784,10 +874,22 @@ function goStep(n){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function selCo(el){
-  document.querySelectorAll('.co-card').forEach(function(c){c.classList.remove('sel');});
-  el.classList.add('sel');
-  selectedCompanyId = el.getAttribute('data-co-id');
+function selectCompany(id) {
+  document.querySelectorAll('.company-card').forEach(card => {
+    card.style.borderColor = 'transparent';
+    card.style.background = '#1a1a4e';
+  });
+
+  const selected = document.querySelector(`.company-card[data-id="${id}"]`);
+  if (selected) {
+    selected.style.borderColor = '#2ecc71';
+    selected.style.background = '#1f1f5e';
+  }
+
+  const select = document.getElementById('company-select');
+  if (select) select.value = id;
+
+  window.selectedCompanyId = id;
 }
 
 function setMode(m){
@@ -916,7 +1018,24 @@ function saveQuote(){
   setTimeout(function(){ window.location.href = 'quotes.html'; }, 900);
 }
 
-document.addEventListener('DOMContentLoaded', function(){ loadCompanies(); });
+document.addEventListener('DOMContentLoaded', function(){
+  const user = getUser();
+  if (user) {
+    const firstName = user.first_name || user.user_metadata?.full_name?.split(' ')[0] || user.email;
+    const lastName = user.last_name || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '';
+    const email = user.email || '';
+    const initiales = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
+
+    const nomEl = document.querySelector('.user-name');
+    const emailEl = document.querySelector('.user-email');
+    const initialesEl = document.querySelector('.user-initiales');
+
+    if (nomEl) nomEl.textContent = firstName + ' ' + lastName;
+    if (emailEl) emailEl.textContent = email;
+    if (initialesEl) initialesEl.textContent = initiales;
+  }
+  chargerEntreprises();
+});
 </script>
 </body>
 </html>

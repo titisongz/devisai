@@ -3,20 +3,40 @@
   var USER_KEY = 'devisai_user';
 
   window.checkAuth = async function() {
-    const token = localStorage.getItem(TOKEN_KEY);
+    let token = localStorage.getItem(TOKEN_KEY);
 
-    if (token) return true;
-
-    const { data: { session } } = await getSupabaseClient().auth.getSession();
-
-    if (session) {
-      localStorage.setItem(TOKEN_KEY, session.access_token);
+    if (!token) {
+      const { data: { session } } = await getSupabaseClient().auth.getSession();
+      if (!session) {
+        window.location.href = 'login.html';
+        return false;
+      }
+      token = session.access_token;
+      localStorage.setItem(TOKEN_KEY, token);
       localStorage.setItem(USER_KEY, JSON.stringify(session.user));
       return true;
     }
 
-    window.location.href = 'login.html';
-    return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expiration = payload.exp * 1000;
+      const cinqMinutes = 5 * 60 * 1000;
+
+      if (Date.now() > expiration - cinqMinutes) {
+        const { data, error } = await getSupabaseClient().auth.refreshSession();
+        if (error || !data.session) {
+          localStorage.clear();
+          window.location.href = 'login.html';
+          return false;
+        }
+        localStorage.setItem(TOKEN_KEY, data.session.access_token);
+        localStorage.setItem(USER_KEY, JSON.stringify(data.session.user));
+      }
+    } catch(e) {
+      console.error('Erreur vérification token:', e);
+    }
+
+    return true;
   };
 
   window.logout = function() {
@@ -27,6 +47,38 @@
 
   window.getToken = function() {
     return localStorage.getItem(TOKEN_KEY);
+  };
+
+  window.refreshTokenIfNeeded = async function() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expiration = payload.exp * 1000;
+      const maintenant = Date.now();
+      const cinqMinutes = 5 * 60 * 1000;
+
+      if (expiration - maintenant < cinqMinutes) {
+        const { data, error } = await getSupabaseClient().auth.refreshSession();
+        if (error || !data.session) {
+          localStorage.clear();
+          window.location.href = 'login.html';
+          return null;
+        }
+        localStorage.setItem(TOKEN_KEY, data.session.access_token);
+        localStorage.setItem(USER_KEY, JSON.stringify(data.session.user));
+        return data.session.access_token;
+      }
+    } catch (e) {
+      console.error('Erreur refresh token:', e);
+    }
+
+    return token;
+  };
+
+  window.getValidToken = async function() {
+    return await window.refreshTokenIfNeeded();
   };
 
   window.getUser = function() {

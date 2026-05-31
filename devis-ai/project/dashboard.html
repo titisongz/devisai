@@ -463,18 +463,18 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
         <div class="stats stagger" data-base="60" data-step="80">
           <div class="card stat hoverable">
             <div class="row1"><span class="label">Devis ce mois</span><span class="icon-chip"><i class="ic ic-sm" data-icon="file"></i></span></div>
-            <div class="val num">12</div>
+            <div class="val num stat-devis-mois">12</div>
             <span class="delta"><i class="ic" data-icon="trend"></i> +33% vs mois dernier</span>
           </div>
           <div class="card stat hoverable">
             <div class="row1"><span class="label">Montant total</span><span class="icon-chip violet"><i class="ic ic-sm" data-icon="tag"></i></span></div>
-            <div class="val num">8,4<small>M FCFA</small></div>
+            <div class="val num stat-montant-total">8,4<small>M FCFA</small></div>
             <span class="delta"><i class="ic" data-icon="trend"></i> +12% ce trimestre</span>
           </div>
           <div class="card stat hoverable">
             <div class="row1"><span class="label">Entreprises configurées</span><span class="icon-chip blue"><i class="ic ic-sm" data-icon="building"></i></span></div>
-            <div class="val num">2</div>
-            <span class="delta flat"><i class="ic" data-icon="check"></i> Bâti Plus &amp; Digital Sahel</span>
+            <div class="val num stat-entreprises">2</div>
+            <span class="delta flat stat-noms-entreprises"><i class="ic" data-icon="check"></i> Bâti Plus &amp; Digital Sahel</span>
           </div>
         </div>
 
@@ -500,43 +500,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
         <div class="table-wrap reveal" style="--d:420ms">
           <table class="data">
             <thead><tr><th>N° devis</th><th>Entreprise</th><th>Client</th><th>Montant</th><th>Statut</th><th>Date</th><th></th></tr></thead>
-            <tbody>
-              <tr onclick="window.location.href='quotes.html'">
-                <td data-label="N°"><span class="q-num">DV-2026-0042</span></td>
-                <td data-label="Entreprise"><span class="cell-strong">Bâti Plus</span></td>
-                <td data-label="Client">Société Teranga SARL</td>
-                <td data-label="Montant"><span class="num cell-strong">1 250 000 FCFA</span></td>
-                <td data-label="Statut"><span class="badge badge-accent"><span class="dot"></span>Accepté</span></td>
-                <td data-label="Date">28 mai 2026</td>
-                <td><div class="row-actions"><button class="iconbtn" onclick="event.stopPropagation();toast('Téléchargement du PDF','download')"><i class="ic" data-icon="download"></i></button></div></td>
-              </tr>
-              <tr onclick="window.location.href='quotes.html'">
-                <td data-label="N°"><span class="q-num">DV-2026-0041</span></td>
-                <td data-label="Entreprise"><span class="cell-strong">Bâti Plus</span></td>
-                <td data-label="Client">Boutique Awa</td>
-                <td data-label="Montant"><span class="num cell-strong">480 000 FCFA</span></td>
-                <td data-label="Statut"><span class="badge badge-warn"><span class="dot"></span>En attente</span></td>
-                <td data-label="Date">26 mai 2026</td>
-                <td><div class="row-actions"><button class="iconbtn" onclick="event.stopPropagation();toast('Téléchargement du PDF','download')"><i class="ic" data-icon="download"></i></button></div></td>
-              </tr>
-              <tr onclick="window.location.href='quotes.html'">
-                <td data-label="N°"><span class="q-num">DV-2026-0040</span></td>
-                <td data-label="Entreprise"><span class="cell-strong">Digital Sahel</span></td>
-                <td data-label="Client">Mairie de Thiès</td>
-                <td data-label="Montant"><span class="num cell-strong">3 600 000 FCFA</span></td>
-                <td data-label="Statut"><span class="badge badge-info"><span class="dot"></span>Envoyé</span></td>
-                <td data-label="Date">24 mai 2026</td>
-                <td><div class="row-actions"><button class="iconbtn" onclick="event.stopPropagation();toast('Téléchargement du PDF','download')"><i class="ic" data-icon="download"></i></button></div></td>
-              </tr>
-              <tr onclick="window.location.href='quotes.html'">
-                <td data-label="N°"><span class="q-num">DV-2026-0039</span></td>
-                <td data-label="Entreprise"><span class="cell-strong">Digital Sahel</span></td>
-                <td data-label="Client">Resto Le Baobab</td>
-                <td data-label="Montant"><span class="num cell-strong">720 000 FCFA</span></td>
-                <td data-label="Statut"><span class="badge badge-neutral"><span class="dot"></span>Brouillon</span></td>
-                <td data-label="Date">22 mai 2026</td>
-                <td><div class="row-actions"><button class="iconbtn" onclick="event.stopPropagation();toast('Téléchargement du PDF','download')"><i class="ic" data-icon="download"></i></button></div></td>
-              </tr>
+            <tbody class="derniers-devis-tbody">
             </tbody>
           </table>
         </div>
@@ -688,6 +652,104 @@ document.getElementById('today').textContent=new Date().toLocaleDateString('fr-F
   var av = document.getElementById('userAvatar');
   if(av) av.textContent = initials;
 })();
+
+async function loadDashboardStats() {
+  const token = getToken();
+  if (!token) return;
+
+  const supabase = getSupabaseClient(token);
+
+  const { data: companies } = await supabase
+    .from('companies')
+    .select('id, name');
+
+  const debutMois = new Date();
+  debutMois.setDate(1);
+  debutMois.setHours(0, 0, 0, 0);
+
+  const { data: devisMois } = await supabase
+    .from('quotes')
+    .select('id, total_amount')
+    .gte('created_at', debutMois.toISOString());
+
+  const { data: tousLesDevis } = await supabase
+    .from('quotes')
+    .select('total_amount');
+
+  const nbDevis = devisMois?.length || 0;
+  const montantTotal = tousLesDevis?.reduce((sum, q) => sum + (q.total_amount || 0), 0) || 0;
+  const nbEntreprises = companies?.length || 0;
+  const nomsEntreprises = companies?.map(c => c.name).join(' & ') || 'Aucune entreprise';
+
+  const statDevis = document.querySelector('.stat-devis-mois');
+  if (statDevis) statDevis.textContent = nbDevis;
+
+  const statMontant = document.querySelector('.stat-montant-total');
+  if (statMontant) statMontant.textContent = montantTotal.toLocaleString('fr-FR') + ' FCFA';
+
+  const statEntreprises = document.querySelector('.stat-entreprises');
+  if (statEntreprises) statEntreprises.textContent = nbEntreprises;
+
+  const nomEntreprises = document.querySelector('.stat-noms-entreprises');
+  if (nomEntreprises) nomEntreprises.innerHTML = '✓ ' + nomsEntreprises;
+}
+
+loadDashboardStats();
+
+async function loadDerniersDevis() {
+  const token = getToken();
+  if (!token) return;
+
+  const supabase = getSupabaseClient(token);
+
+  const { data: devis } = await supabase
+    .from('quotes')
+    .select('quote_number, company_id, client_name, total_amount, status, created_at')
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  const tbody = document.querySelector('.derniers-devis-tbody');
+  if (!tbody) return;
+
+  if (!devis || devis.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">Aucun devis pour le moment</td></tr>';
+    return;
+  }
+
+  const { data: companies } = await supabase
+    .from('companies')
+    .select('id, name');
+
+  const companiesMap = {};
+  companies?.forEach(c => companiesMap[c.id] = c.name);
+
+  const statusColors = {
+    'accepté': '#2ecc71',
+    'envoyé': '#3498db',
+    'brouillon': '#888',
+    'refusé': '#e74c3c',
+    'en attente': '#f39c12'
+  };
+
+  tbody.innerHTML = devis.map(d => {
+    const date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    const montant = (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA';
+    const entreprise = companiesMap[d.company_id] || '—';
+    const couleur = statusColors[d.status] || '#888';
+    const statusLabel = d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—';
+
+    return `<tr>
+      <td>${d.quote_number || '—'}</td>
+      <td>${entreprise}</td>
+      <td>${d.client_name || '—'}</td>
+      <td>${montant}</td>
+      <td><span style="background:${couleur}22; color:${couleur}; padding: 4px 10px; border-radius: 20px; font-size: 12px;">${statusLabel}</span></td>
+      <td><button style="background:none; border:none; color:#888; cursor:pointer;">↓</button></td>
+    </tr>`;
+  }).join('');
+}
+
+loadDerniersDevis();
 
 </script>
 </body>
