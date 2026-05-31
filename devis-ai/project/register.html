@@ -700,19 +700,14 @@ document.getElementById('pw').addEventListener('change', function() {
   emailField.dispatchEvent(new Event('input'));
 });
 
-async function handleGoogleRegister(){
-  try {
-    const client = getSupabaseClient();
-    const { error } = await client.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin + '/devis-ai/project/dashboard.html'
-      }
-    });
-    if(error) toast('Erreur Google : ' + error.message, 'x');
-  } catch(err){
-    toast('Erreur de connexion Google', 'x');
-  }
+async function handleGoogleRegister() {
+  const { error } = await getSupabaseClient().auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'http://127.0.0.1:5500/devis-ai/project/auth-callback.html'
+    }
+  });
+  if (error) alert('Erreur Google : ' + error.message);
 }
 
 function handleRegister(e){

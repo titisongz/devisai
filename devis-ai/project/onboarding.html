@@ -6,6 +6,7 @@
 <title>Configuration · DevisAI</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 <style id="ds">/* ============================================================
    DevisAI — Design System
    Dark premium SaaS. Indigo base, green accent.
@@ -403,6 +404,15 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 input, textarea {
   caret-color: #ffffff;
 }
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #1a1f2e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
 </style>
 </head>
 <body>
@@ -421,11 +431,11 @@ input, textarea {
   </div>
 
   <form class="form-grid stagger" data-base="80" data-step="55" onsubmit="handleSubmit(event)" autocomplete="off">
-    <div class="field"><label for="cn">Nom de l'entreprise</label><input class="input" id="cn" placeholder="Ex : Bâti Plus Sénégal" value="Bâti Plus Sénégal" autocomplete="new-password" required></div>
-    <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" autocomplete="new-password" required></div></div>
-    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" placeholder="+221 ..." value="+221 77 845 12 30" autocomplete="new-password" required></div></div>
-    <div class="field"><label for="cw">Site web <span class="opt">(optionnel)</span></label><div class="input-group"><i class="ic" data-icon="globe"></i><input class="input" id="cw" placeholder="www.entreprise.com" value="www.batiplus.sn" autocomplete="new-password"></div></div>
-    <div class="field full"><label for="ca">Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="ca" placeholder="Rue, ville, pays" value="Rue 12 x Bd du Centenaire, Dakar, Sénégal" autocomplete="new-password" required></div></div>
+    <div class="field"><label for="cn">Nom de l'entreprise</label><input class="input" id="cn" placeholder="Ex : Bâti Plus Sénégal" value="Bâti Plus Sénégal" autocomplete="organization" required></div>
+    <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" autocomplete="organization-email" required></div></div>
+    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" placeholder="+221 ..." value="+221 77 845 12 30" autocomplete="tel" required></div></div>
+    <div class="field"><label for="cw">Site web <span class="opt">(optionnel)</span></label><div class="input-group"><i class="ic" data-icon="globe"></i><input class="input" id="cw" placeholder="www.entreprise.com" value="www.batiplus.sn" autocomplete="url"></div></div>
+    <div class="field full"><label for="ca">Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="ca" placeholder="Rue, ville, pays" value="Rue 12 x Bd du Centenaire, Dakar, Sénégal" autocomplete="street-address" required></div></div>
 
     <div class="field full">
       <label>Logo de l'entreprise</label>
@@ -639,35 +649,77 @@ async function handleSubmit(e) {
   btn.innerHTML = '<span class="ic spin" style="width:18px;height:18px">' + icon('settings') + '</span> Enregistrement…';
   document.getElementById('obError').style.display = 'none';
 
-  const token = localStorage.getItem('devisai_token');
-  if (!token) {
+  const nomEntreprise = document.getElementById('cn')?.value?.trim();
+  const emailEntreprise = document.getElementById('ce')?.value?.trim();
+  const telephone = document.getElementById('cp')?.value?.trim();
+  const adresse = document.getElementById('ca')?.value?.trim();
+  const logoInput = document.getElementById('logoInput');
+  const sigCanvas = document.getElementById('signatureCanvas');
+  const blankRef = document.createElement('canvas');
+  if (sigCanvas) { blankRef.width = sigCanvas.width; blankRef.height = sigCanvas.height; }
+  const signatureVide = !sigCanvas || sigCanvas.toDataURL() === blankRef.toDataURL();
+
+  if (!nomEntreprise || !emailEntreprise || !telephone || !adresse) {
     btn.disabled = false;
     btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
+    alert('Veuillez remplir tous les champs obligatoires : nom, email, téléphone et adresse.');
+    return;
+  }
+
+  if (!logoInput || !logoInput.files || logoInput.files.length === 0) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
+    alert('Veuillez uploader le logo de votre entreprise.');
+    return;
+  }
+
+  if (signatureVide) {
+    btn.disabled = false;
+    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
+    alert('Veuillez dessiner votre signature.');
+    return;
+  }
+
+  let token = getToken();
+  if (!token) {
+    const { data: { session } } = await getSupabaseClient().auth.getSession();
+    if (session) {
+      token = session.access_token;
+      localStorage.setItem('devisai_token', session.access_token);
+      localStorage.setItem('devisai_user', JSON.stringify(session.user));
+    }
+  }
+
+  if (!token) {
     window.location.href = 'login.html';
     return;
   }
 
-  // Vérification logo
-  const logoInput = document.getElementById('logoInput');
-  if (!logoInput || !logoInput.files || logoInput.files.length === 0) {
-    btn.disabled = false;
-    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
-    showError('Veuillez uploader le logo de votre entreprise.');
-    return;
+  const user = getUser();
+
+  // Récupérer le profil existant
+  const { data: existingProfile } = await getSupabaseClient(token)
+    .from('profiles')
+    .select('first_name')
+    .eq('id', user.id)
+    .single();
+
+  // Si pas de prénom, utiliser les infos Google
+  if (!existingProfile?.first_name && user?.user_metadata) {
+    const fullName = user.user_metadata.full_name || '';
+    const nameParts = fullName.split(' ');
+    await getSupabaseClient(token)
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
+        email: user.email,
+        full_name: fullName
+      });
   }
 
-  // Vérification signature
-  const canvas = document.getElementById('signatureCanvas');
-  const signatureData = canvas.toDataURL('image/png');
-  const blankCanvas = document.createElement('canvas');
-  blankCanvas.width = canvas.width;
-  blankCanvas.height = canvas.height;
-  if (signatureData === blankCanvas.toDataURL('image/png')) {
-    btn.disabled = false;
-    btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
-    showError('Veuillez apposer votre signature avant de continuer.');
-    return;
-  }
+  const signatureData = sigCanvas.toDataURL('image/png');
 
   // Conversion logo en base64
   const logoFile = logoInput.files[0];

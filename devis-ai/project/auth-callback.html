@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion en cours...</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <style>
+    body {
+      background: #0d0d2b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Inter, sans-serif;
+      color: #ffffff;
+    }
+    .message {
+      text-align: center;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #1a1a4e;
+      border-top: 3px solid #2ecc71;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="message">
+    <div class="spinner"></div>
+    <p>Connexion en cours...</p>
+  </div>
+
+  <script>
+    async function handleCallback() {
+      const { data: { session } } = await getSupabaseClient().auth.getSession();
+
+      if (!session) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      // Sauvegarder token et user
+      const token = session.access_token;
+      const user = session.user;
+      localStorage.setItem('devisai_token', token);
+      localStorage.setItem('devisai_user', JSON.stringify(user));
+
+      const fullName = user.user_metadata?.full_name || '';
+      const nameParts = fullName.split(' ');
+      const enrichedUser = {
+        ...user,
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
+        full_name: fullName
+      };
+      localStorage.setItem('devisai_user', JSON.stringify(enrichedUser));
+
+      // Sauvegarder infos Google dans profiles
+      await getSupabaseClient(token)
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          first_name: nameParts[0] || '',
+          last_name: nameParts.slice(1).join(' ') || '',
+          email: user.email,
+          full_name: fullName
+        });
+
+      // Vérifier si l'utilisateur a déjà une entreprise
+      const { data: companies } = await getSupabaseClient(token)
+        .from('companies')
+        .select('id')
+        .limit(1);
+
+      if (!companies || companies.length === 0) {
+        window.location.href = 'onboarding.html';
+      } else {
+        window.location.href = 'dashboard.html';
+      }
+    }
+
+    handleCallback();
+  </script>
+</body>
+</html>

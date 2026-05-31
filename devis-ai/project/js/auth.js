@@ -2,10 +2,21 @@
   var TOKEN_KEY = 'devisai_token';
   var USER_KEY = 'devisai_user';
 
-  window.checkAuth = function() {
-    if (!localStorage.getItem(TOKEN_KEY)) {
-      window.location.href = 'login.html';
+  window.checkAuth = async function() {
+    const token = localStorage.getItem(TOKEN_KEY);
+
+    if (token) return true;
+
+    const { data: { session } } = await getSupabaseClient().auth.getSession();
+
+    if (session) {
+      localStorage.setItem(TOKEN_KEY, session.access_token);
+      localStorage.setItem(USER_KEY, JSON.stringify(session.user));
+      return true;
     }
+
+    window.location.href = 'login.html';
+    return false;
   };
 
   window.logout = function() {
