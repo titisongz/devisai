@@ -771,6 +771,14 @@ function afficherPage(page) {
     'en attente':'#f39c12','attente': '#f39c12', 'pending':  '#f39c12'
   };
 
+  const statusLabels = {
+    'draft': 'Brouillon', 'brouillon': 'Brouillon',
+    'sent': 'Envoyé', 'envoyé': 'Envoyé', 'envoye': 'Envoyé',
+    'accepted': 'Accepté', 'accepté': 'Accepté', 'accepte': 'Accepté',
+    'refused': 'Refusé', 'refusé': 'Refusé', 'refuse': 'Refusé',
+    'pending': 'En attente', 'en attente': 'En attente', 'attente': 'En attente'
+  };
+
   tbody.innerHTML = devisPage.map(d => {
     const date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
     const montant = (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA';
@@ -778,7 +786,7 @@ function afficherPage(page) {
     const clientName = d.content?.client_name || d.client_name || '—';
     const statut = (d.status || '').toLowerCase();
     const couleur = statusColors[statut] || '#888';
-    const statusLabel = d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—';
+    const statusLabel = statusLabels[statut] || (d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—');
 
     return `<tr onclick="voirDevis('${d.id}')">
       <td data-label="N°"><span class="q-num">${d.quote_number || '—'}</span></td>

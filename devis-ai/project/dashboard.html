@@ -673,16 +673,18 @@ async function loadDashboardStats() {
     { data: tousLesDevis }
   ] = await Promise.all([
     supabase.from('companies').select('id, name'),
-    supabase.from('quotes').select('id, total_amount').gte('created_at', debutMois.toISOString()),
-    supabase.from('quotes').select('id, total_amount').gte('created_at', debutMoisDernier.toISOString()).lt('created_at', debutMois.toISOString()),
-    supabase.from('quotes').select('total_amount')
+    supabase.from('quotes').select('id, total_amount, content').gte('created_at', debutMois.toISOString()),
+    supabase.from('quotes').select('id, total_amount, content').gte('created_at', debutMoisDernier.toISOString()).lt('created_at', debutMois.toISOString()),
+    supabase.from('quotes').select('total_amount, content')
   ]);
+
+  const getAmount = q => (!q.total_amount && q.content?.total_ttc) ? q.content.total_ttc : (q.total_amount || 0);
 
   const nbDevis = devisMois?.length || 0;
   const nbDevisDernier = devisMoisDernier?.length || 0;
-  const montantMois = devisMois?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
-  const montantDernier = devisMoisDernier?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
-  const montantTotal = tousLesDevis?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
+  const montantMois = devisMois?.reduce((s, q) => s + getAmount(q), 0) || 0;
+  const montantDernier = devisMoisDernier?.reduce((s, q) => s + getAmount(q), 0) || 0;
+  const montantTotal = tousLesDevis?.reduce((s, q) => s + getAmount(q), 0) || 0;
   const nbEntreprises = companies?.length || 0;
   const nomsEntreprises = companies?.map(c => c.name).join(' & ') || 'Aucune entreprise';
 
@@ -749,7 +751,7 @@ async function loadDerniersDevis() {
 
   const { data: devis } = await supabase
     .from('quotes')
-    .select('quote_number, company_id, client_name, total_amount, status, created_at')
+    .select('quote_number, company_id, client_name, total_amount, status, created_at, content')
     .order('created_at', { ascending: false })
     .limit(5);
 
@@ -769,24 +771,35 @@ async function loadDerniersDevis() {
   companies?.forEach(c => companiesMap[c.id] = c.name);
 
   const statusColors = {
-    'accepté': '#2ecc71',
-    'envoyé': '#3498db',
-    'brouillon': '#888',
-    'refusé': '#e74c3c',
-    'en attente': '#f39c12'
+    'accepted': '#2ecc71', 'accepté': '#2ecc71', 'accepte': '#2ecc71',
+    'sent': '#3498db', 'envoyé': '#3498db', 'envoye': '#3498db',
+    'draft': '#888', 'brouillon': '#888',
+    'refused': '#e74c3c', 'refusé': '#e74c3c', 'refuse': '#e74c3c',
+    'pending': '#f39c12', 'en attente': '#f39c12', 'attente': '#f39c12'
+  };
+
+  const statusLabels = {
+    'draft': 'Brouillon', 'brouillon': 'Brouillon',
+    'sent': 'Envoyé', 'envoyé': 'Envoyé', 'envoye': 'Envoyé',
+    'accepted': 'Accepté', 'accepté': 'Accepté', 'accepte': 'Accepté',
+    'refused': 'Refusé', 'refusé': 'Refusé', 'refuse': 'Refusé',
+    'pending': 'En attente', 'en attente': 'En attente', 'attente': 'En attente'
   };
 
   tbody.innerHTML = devis.map(d => {
+    const montantBrut = (!d.total_amount && d.content?.total_ttc) ? d.content.total_ttc : (d.total_amount || 0);
     const date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-    const montant = (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA';
+    const montant = montantBrut.toLocaleString('fr-FR') + ' FCFA';
     const entreprise = companiesMap[d.company_id] || '—';
-    const couleur = statusColors[d.status] || '#888';
-    const statusLabel = d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—';
+    const clientName = d.content?.client_name || d.client_name || '—';
+    const statut = (d.status || '').toLowerCase();
+    const couleur = statusColors[statut] || '#888';
+    const statusLabel = statusLabels[statut] || (d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—');
 
     return `<tr>
       <td>${d.quote_number || '—'}</td>
       <td>${entreprise}</td>
-      <td>${d.client_name || '—'}</td>
+      <td>${clientName}</td>
       <td>${montant}</td>
       <td><span style="background:${couleur}22; color:${couleur}; padding: 4px 10px; border-radius: 20px; font-size: 12px;">${statusLabel}</span></td>
       <td>${date}</td>
