@@ -718,7 +718,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
             <div class="nq-actions">
               <button class="btn btn-ghost btn-lg" onclick="goStep(2)"><i class="ic ic-sm" data-icon="edit"></i> Modifier</button>
               <button class="btn btn-secondary btn-lg btn-pdf" onclick="exportPDF()"><i class="ic ic-sm" data-icon="download"></i> Exporter en PDF</button>
-              <button class="btn btn-primary btn-lg" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Sauvegarder</button>
+              <button class="btn btn-primary btn-lg btn-enregistrer" onclick="sauvegarderDevis()"><i class="ic ic-sm" data-icon="check"></i> Sauvegarder</button>
             </div>
           </div>
         </section>
@@ -731,7 +731,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 <div class="sticky-actions" id="stickyActions" style="display:none">
   <button class="btn btn-ghost" onclick="toggleEdit()"><i class="ic ic-sm" data-icon="edit"></i> <span id="editBtnLabel">Modifier</span></button>
   <button class="btn btn-secondary btn-pdf" onclick="exportPDF()"><i class="ic ic-sm" data-icon="download"></i> PDF</button>
-  <button class="btn btn-primary" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Enregistrer</button>
+  <button class="btn btn-primary btn-enregistrer" onclick="sauvegarderDevis()"><i class="ic ic-sm" data-icon="check"></i> Enregistrer</button>
 </div>
 
 <nav class="bottom-nav">
@@ -1318,10 +1318,52 @@ function shareEmail() {
   window.location.href = 'mailto:' + d.client_email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
 
-function saveQuote(){
+async function sauvegarderDevis() {
   if (!generatedQuote) return;
-  toast('Devis ' + generatedQuote.quote_number + ' sauvegardé', 'checkCircle');
-  setTimeout(function(){ window.location.href = 'quotes.html'; }, 900);
+  const bouton = document.querySelector('.btn-enregistrer');
+  if (bouton) { bouton.textContent = '⏳ Enregistrement...'; bouton.disabled = true; }
+
+  try {
+    const token = getToken();
+    if (!token) throw new Error('Non authentifié');
+
+    const content = generatedQuote.content;
+    const total_ttc = content.total_ttc || 0;
+
+    const payload = {
+      company_id: window.selectedCompanyId,
+      client_name: content.client_name || '',
+      client_email: content.client_email || '',
+      client_address: content.client_address || '',
+      content: content,
+      status: 'brouillon',
+      total_amount: total_ttc
+    };
+
+    const response = await fetch('http://localhost:3000/api/quotes/' + generatedQuote.id, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Erreur lors de la sauvegarde');
+
+    if (bouton) { bouton.textContent = '✓ Enregistré'; bouton.style.background = '#27ae60'; }
+
+    localStorage.removeItem('devisai_companies_cache');
+    localStorage.removeItem('devisai_companies_cache_time');
+
+    setTimeout(function() { window.location.href = 'quotes.html'; }, 2000);
+
+  } catch(error) {
+    console.error('Erreur sauvegarde:', error);
+    alert('Erreur : ' + error.message);
+    if (bouton) { bouton.innerHTML = '<i class="ic ic-sm" data-icon="check"></i> Enregistrer'; bouton.disabled = false; }
+  }
 }
 
 async function exportPDF() {
