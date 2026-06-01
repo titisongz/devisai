@@ -493,6 +493,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .transcript .ph{color:var(--ghost)}
 .transcript .cursor{display:inline-block;width:2px;height:1.1em;background:var(--accent);vertical-align:text-bottom;animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .mode-tabs{display:flex;gap:8px;background:var(--field);border:1px solid var(--border);border-radius:var(--pill);padding:4px;width:max-content;margin:0 auto 22px}
 .mode-tabs button{height:38px;padding:0 18px;border:none;border-radius:var(--pill);background:transparent;color:var(--muted);font-weight:600;font-size:14px;transition:.18s}
 .mode-tabs button.active{background:var(--card-2);color:var(--text)}
@@ -909,6 +910,27 @@ async function chargerEntreprises() {
 })();
 
 function goStep(n){
+  if (n === 2) {
+    if (!window.selectedCompanyId) {
+      const coList = document.getElementById('coList');
+      if (coList) {
+        coList.style.animation = 'shake 0.4s ease';
+        setTimeout(() => coList.style.animation = '', 400);
+      }
+      let msg = document.getElementById('company-error-msg');
+      if (!msg) {
+        msg = document.createElement('p');
+        msg.id = 'company-error-msg';
+        msg.style.cssText = 'color:#e74c3c; font-size:13px; margin-top:8px;';
+        coList.parentNode.insertBefore(msg, coList.nextSibling);
+      }
+      msg.textContent = 'Veuillez sélectionner une entreprise avant de continuer.';
+      return;
+    }
+    const msg = document.getElementById('company-error-msg');
+    if (msg) msg.textContent = '';
+  }
+
   [1,2,3].forEach(function(i){document.getElementById('step'+i).classList.toggle('show',i===n);});
   document.getElementById('dot1').className='st '+(n>1?'done':(n===1?'active':''));
   document.getElementById('dot2').className='st '+(n>2?'done':(n===2?'active':''));
