@@ -544,7 +544,8 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .ed-editable{outline:2px dashed #2ecc71;border-radius:4px;padding:2px 4px;cursor:text;min-width:40px;display:inline-block}
 
 .nq-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:22px}
-.sticky-actions{position:fixed;bottom:0;left:0;right:0;background:#0d0d2b;border-top:1px solid #1a1a4e;padding:16px 24px;display:flex;justify-content:flex-end;gap:12px;z-index:100}
+.sticky-actions{position:fixed;bottom:0;left:0;right:0;background:#0d0d2b;border-top:1px solid #1a1a4e;padding:10px 24px;display:flex;justify-content:flex-end;gap:10px;z-index:100}
+.sticky-actions .btn{padding:8px 16px;font-size:13px}
 #quoteOut{padding-bottom:88px}
 
 @media (max-width:640px){
@@ -727,7 +728,6 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 <!-- barre sticky bas (visible uniquement à l'étape 3) -->
 <div class="sticky-actions" id="stickyActions" style="display:none">
   <button class="btn btn-ghost" onclick="toggleEdit()"><i class="ic ic-sm" data-icon="edit"></i> <span id="editBtnLabel">Modifier</span></button>
-  <button class="btn btn-ghost" onclick="goStep(2)">↺ Régénérer</button>
   <button class="btn btn-secondary" onclick="toast('Export PDF — bientôt disponible','download')"><i class="ic ic-sm" data-icon="download"></i> PDF</button>
   <button class="btn btn-primary" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Enregistrer</button>
 </div>
@@ -960,8 +960,8 @@ function goStep(n){
   document.getElementById('dot3').className='st '+(n===3?'active':'');
   document.getElementById('line1').className='line '+(n>1?'fill':'');
   document.getElementById('line2').className='line '+(n>2?'fill':'');
-  document.getElementById('stickyActions').style.display=(n===3)?'flex':'none';
-  document.getElementById('shareWrap').style.display=(n===3)?'block':'none';
+  document.getElementById('stickyActions').style.display='none';
+  document.getElementById('shareWrap').style.display='none';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1099,6 +1099,8 @@ async function generate(){
     renderQuote(result.quote);
     document.getElementById('genLoad').style.display = 'none';
     document.getElementById('quoteOut').style.display = 'block';
+    document.getElementById('stickyActions').style.display = 'flex';
+    document.getElementById('shareWrap').style.display = 'block';
   } catch(err) {
     clearInterval(mi);
     goStep(2);
