@@ -558,6 +558,8 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 </head>
@@ -715,7 +717,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 
             <div class="nq-actions">
               <button class="btn btn-ghost btn-lg" onclick="goStep(2)"><i class="ic ic-sm" data-icon="edit"></i> Modifier</button>
-              <button class="btn btn-secondary btn-lg" onclick="toast('Export PDF généré','download')"><i class="ic ic-sm" data-icon="download"></i> Exporter en PDF</button>
+              <button class="btn btn-secondary btn-lg btn-pdf" onclick="exportPDF()"><i class="ic ic-sm" data-icon="download"></i> Exporter en PDF</button>
               <button class="btn btn-primary btn-lg" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Sauvegarder</button>
             </div>
           </div>
@@ -728,7 +730,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 <!-- barre sticky bas (visible uniquement à l'étape 3) -->
 <div class="sticky-actions" id="stickyActions" style="display:none">
   <button class="btn btn-ghost" onclick="toggleEdit()"><i class="ic ic-sm" data-icon="edit"></i> <span id="editBtnLabel">Modifier</span></button>
-  <button class="btn btn-secondary" onclick="toast('Export PDF — bientôt disponible','download')"><i class="ic ic-sm" data-icon="download"></i> PDF</button>
+  <button class="btn btn-secondary btn-pdf" onclick="exportPDF()"><i class="ic ic-sm" data-icon="download"></i> PDF</button>
   <button class="btn btn-primary" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Enregistrer</button>
 </div>
 
@@ -1320,6 +1322,43 @@ function saveQuote(){
   if (!generatedQuote) return;
   toast('Devis ' + generatedQuote.quote_number + ' sauvegardé', 'checkCircle');
   setTimeout(function(){ window.location.href = 'quotes.html'; }, 900);
+}
+
+async function exportPDF() {
+  const bouton = document.querySelector('.btn-pdf');
+  if (bouton) { bouton.textContent = '⏳ Génération...'; bouton.disabled = true; }
+
+  try {
+    const element = document.querySelector('.quote-doc');
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    const imgX = (pdfWidth - imgWidth * ratio) / 2;
+
+    pdf.addImage(imgData, 'PNG', imgX, 0, imgWidth * ratio, imgHeight * ratio);
+
+    const quoteNumber = generatedQuote?.quote_number || 'devis';
+    pdf.save(`${quoteNumber}.pdf`);
+
+  } catch(error) {
+    console.error('Erreur PDF:', error);
+    alert('Erreur lors de la génération du PDF');
+  } finally {
+    if (bouton) { bouton.innerHTML = '<i class="ic ic-sm" data-icon="download"></i> PDF'; bouton.disabled = false; }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function(){
