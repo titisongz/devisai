@@ -499,7 +499,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 
         <div class="table-wrap reveal" style="--d:420ms">
           <table class="data">
-            <thead><tr><th>N° devis</th><th>Entreprise</th><th>Client</th><th>Montant</th><th>Statut</th><th>Date</th><th></th></tr></thead>
+            <thead><tr><th>N° devis</th><th>Entreprise</th><th>Client</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead>
             <tbody class="derniers-devis-tbody">
             </tbody>
           </table>
@@ -768,7 +768,7 @@ async function loadDerniersDevis() {
 
   const { data: devis } = await supabase
     .from('quotes')
-    .select('quote_number, company_id, client_name, total_amount, status, created_at, content')
+    .select('id, quote_number, company_id, client_name, total_amount, status, created_at, content')
     .order('created_at', { ascending: false })
     .limit(5);
 
@@ -820,7 +820,6 @@ async function loadDerniersDevis() {
       <td>${montant}</td>
       <td><span style="background:${couleur}22; color:${couleur}; padding: 4px 10px; border-radius: 20px; font-size: 12px;">${statusLabel}</span></td>
       <td>${date}</td>
-      <td><button style="background:none; border:none; color:#888; cursor:pointer;">↓</button></td>
     </tr>`;
   }).join('');
 }
