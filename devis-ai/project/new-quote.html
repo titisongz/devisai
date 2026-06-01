@@ -666,7 +666,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
           </div>
 
           <div id="quoteOut" style="display:none">
-            <h2 class="step-title" style="display:flex;align-items:center;gap:10px">Votre devis est prêt <span class="badge badge-accent"><i class="ic ic-sm" data-icon="check"></i> Généré par IA</span></h2>
+            <h2 class="step-title">Votre devis est <span style="color:var(--accent)">prêt</span></h2>
             <p class="step-sub">Vérifiez le contenu puis exportez-le ou sauvegardez-le.</p>
 
             <div class="quote-doc">
@@ -1127,7 +1127,7 @@ function renderQuote(quote) {
   }).join('');
 
   document.getElementById('quoteOut').innerHTML = `
-    <h2 class="step-title" style="display:flex;align-items:center;gap:10px">Votre devis est prêt <span class="badge badge-accent"><i class="ic ic-sm" data-icon="check"></i> Généré par IA</span></h2>
+    <h2 class="step-title">Votre devis est <span style="color:var(--accent)">prêt</span></h2>
     <p class="step-sub">Vérifiez le contenu puis exportez-le ou sauvegardez-le.</p>
     <div class="quote-doc"><div class="qd-bar"></div><div class="qd-in">
       <div class="qd-head" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">
