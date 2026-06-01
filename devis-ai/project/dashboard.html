@@ -654,7 +654,7 @@ document.getElementById('today').textContent=new Date().toLocaleDateString('fr-F
 })();
 
 async function loadDashboardStats() {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) return;
 
   const supabase = getSupabaseClient(token);
@@ -694,10 +694,16 @@ async function loadDashboardStats() {
   if (nomEntreprises) nomEntreprises.innerHTML = '✓ ' + nomsEntreprises;
 }
 
+document.querySelector('.stat-devis-mois').textContent = '...';
+document.querySelector('.stat-montant-total').textContent = '...';
+document.querySelector('.stat-entreprises').textContent = '...';
+document.querySelector('.stat-noms-entreprises').innerHTML = '...';
+document.querySelector('.derniers-devis-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#888;">Chargement...</td></tr>';
+
 loadDashboardStats();
 
 async function loadDerniersDevis() {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) return;
 
   const supabase = getSupabaseClient(token);

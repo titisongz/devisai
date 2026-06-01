@@ -367,6 +367,44 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 @media (max-width:560px){
   .grid.cols-2,.grid.cols-3{grid-template-columns:1fr!important}
 }
+.company-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: #1a1a4e;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 220px;
+  max-width: 300px;
+}
+.company-card:hover {
+  background: #1f1f5e;
+  border-color: #2ecc7166;
+}
+.company-card.selected {
+  border-color: #2ecc71;
+  background: #1f1f5e;
+}
+.company-logo-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.company-card-name {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  word-break: break-word;
+}
 </style>
 <style>
 .nq-wrap{max-width:860px;margin:0 auto}
@@ -806,44 +844,14 @@ async function chargerEntreprises() {
   }
 
   const carteHTML = (c) => `
-    <div class="company-card" data-id="${c.id}" onclick="selectCompany('${c.id}')" style="
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 16px 20px;
-      background: #1a1a4e;
-      border: 2px solid transparent;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      min-width: 220px;
-      max-width: 300px;
-    "
-    onmouseover="this.style.borderColor='#2ecc71'; this.style.background='#1f1f5e'"
-    onmouseout="this.style.borderColor='transparent'; this.style.background='#1a1a4e'">
-      <div style="
-        width: 52px;
-        height: 52px;
-        border-radius: 10px;
-        background: ${c.brand_color || '#2ecc71'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        flex-shrink: 0;
-      ">
+    <div class="company-card" data-id="${c.id}" onclick="window.selectCompany('${c.id}')">
+      <div class="company-logo-thumb" style="background:${c.brand_color || '#2ecc71'}">
         ${c.logo_url
-          ? `<img src="${c.logo_url}" alt="${c.name}" style="width:100%; height:100%; object-fit:cover;">`
+          ? `<img src="${c.logo_url}" alt="${c.name}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`
           : `<span style="color:#fff; font-weight:700; font-size:22px;">${c.name[0].toUpperCase()}</span>`
         }
       </div>
-      <span style="
-        color:#ffffff;
-        font-size:14px;
-        font-weight:500;
-        line-height:1.3;
-        word-break: break-word;
-      ">${c.name}</span>
+      <span class="company-card-name">${c.name}</span>
     </div>
   `;
 
@@ -874,23 +882,19 @@ function goStep(n){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function selectCompany(id) {
+window.selectCompany = function(id) {
   document.querySelectorAll('.company-card').forEach(card => {
-    card.style.borderColor = 'transparent';
-    card.style.background = '#1a1a4e';
+    card.classList.remove('selected');
   });
 
   const selected = document.querySelector(`.company-card[data-id="${id}"]`);
-  if (selected) {
-    selected.style.borderColor = '#2ecc71';
-    selected.style.background = '#1f1f5e';
-  }
+  if (selected) selected.classList.add('selected');
 
   const select = document.getElementById('company-select');
   if (select) select.value = id;
 
   window.selectedCompanyId = id;
-}
+};
 
 function setMode(m){
   var v=m==='voice';

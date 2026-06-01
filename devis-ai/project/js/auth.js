@@ -36,8 +36,28 @@
       console.error('Erreur vérification token:', e);
     }
 
+    demarrerRefreshAutomatique();
     return true;
   };
+
+  function demarrerRefreshAutomatique() {
+    setInterval(async () => {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return;
+
+      try {
+        const { data, error } = await getSupabaseClient().auth.refreshSession();
+        if (!error && data.session) {
+          localStorage.setItem(TOKEN_KEY, data.session.access_token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.session.user));
+          localStorage.removeItem('devisai_companies_cache');
+          localStorage.removeItem('devisai_companies_cache_time');
+        }
+      } catch(e) {
+        console.error('Refresh automatique échoué:', e);
+      }
+    }, 50 * 60 * 1000);
+  }
 
   window.logout = function() {
     localStorage.removeItem(TOKEN_KEY);
