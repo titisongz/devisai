@@ -734,7 +734,7 @@ function handleRegister(e){
   b.innerHTML = '<span class="ic spin" style="width:18px;height:18px">'+icon('settings')+'</span> Création...';
   b.disabled = true;
 
-  fetch('http://localhost:3000/api/auth/register', {
+  fetch('https://devisai-production.up.railway.app/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

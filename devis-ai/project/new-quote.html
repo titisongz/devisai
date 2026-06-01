@@ -1108,7 +1108,7 @@ async function generate(){
   var mi = setInterval(function(){ k++; if(msgs[k]) document.getElementById('genMsg').textContent = msgs[k]; }, 700);
   try {
     var token = getToken();
-    var res = await fetch('http://localhost:3000/api/quotes/generate', {
+    var res = await fetch('https://devisai-production.up.railway.app/api/quotes/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ company_id: selectedCompanyId, description: description })
@@ -1190,7 +1190,7 @@ function renderQuote(quote) {
 
   hydrateIcons();
 
-  var qrUrl = 'http://localhost:3000/api/quotes/' + quote.quote_number + '/share';
+  var qrUrl = 'https://devisai-production.up.railway.app/api/quotes/' + quote.quote_number + '/share';
   new QRCode(document.getElementById('qrcode-box'), {
     text: qrUrl,
     width: 96,
@@ -1327,7 +1327,7 @@ function shareWhatsApp() {
 
 function shareTelegram() {
   var d = buildShareData(); if (!d) return;
-  window.open('https://t.me/share/url?url=' + encodeURIComponent('http://localhost:3000') + '&text=' + encodeURIComponent(d.msg), '_blank');
+  window.open('https://t.me/share/url?url=' + encodeURIComponent('https://devisai-production.up.railway.app') + '&text=' + encodeURIComponent(d.msg), '_blank');
 }
 
 function shareEmail() {
@@ -1359,7 +1359,7 @@ async function sauvegarderDevis() {
       total_amount: total_ttc
     };
 
-    const response = await fetch('http://localhost:3000/api/quotes/' + generatedQuote.id, {
+    const response = await fetch('https://devisai-production.up.railway.app/api/quotes/' + generatedQuote.id, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

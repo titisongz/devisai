@@ -675,7 +675,7 @@ function handleLogin(e){
   b.innerHTML = '<span class="ic spin" style="width:18px;height:18px">'+icon('settings')+'</span> Connexion...';
   b.disabled = true;
 
-  fetch('http://localhost:3000/api/auth/login', {
+  fetch('https://devisai-production.up.railway.app/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
