@@ -642,7 +642,7 @@ async function handleGoogleLogin() {
   const { error } = await getSupabaseClient().auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'http://127.0.0.1:5500/devis-ai/project/auth-callback.html'
+      redirectTo: '/auth-callback.html'
     }
   });
   if (error) alert('Erreur Google : ' + error.message);
