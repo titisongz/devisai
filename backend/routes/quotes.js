@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
     const { data, error } = await supabase
       .from('quotes')
       .select('*, companies(name)')
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .order('created_at', { ascending: false });
 
     if (error) return res.status(400).json({ error: error.message });
@@ -53,7 +53,7 @@ router.post('/generate', async (req, res) => {
       .from('companies')
       .select('*')
       .eq('id', company_id)
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .single();
 
     if (companyError || !company) {
@@ -81,7 +81,7 @@ router.post('/generate', async (req, res) => {
     const { data: savedQuote, error: saveError } = await supabase
       .from('quotes')
       .insert({
-        user_id: req.user.sub,
+        user_id: req.user.id,
         company_id,
         quote_number: quoteNumber,
         content: quoteData,
@@ -107,7 +107,7 @@ router.get('/:id', async (req, res) => {
       .from('quotes')
       .select('*, companies(*)')
       .eq('id', id)
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .single();
 
     if (error || !data) return res.status(404).json({ error: 'Devis introuvable' });
@@ -128,7 +128,7 @@ router.put('/:id', async (req, res) => {
       .from('quotes')
       .select('id')
       .eq('id', id)
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .single();
 
     if (fetchError || !existing) return res.status(404).json({ error: 'Devis introuvable' });
@@ -157,7 +157,7 @@ router.delete('/:id', async (req, res) => {
       .from('quotes')
       .delete()
       .eq('id', id)
-      .eq('user_id', req.user.sub);
+      .eq('user_id', req.user.id);
 
     if (error) return res.status(400).json({ error: error.message });
 
@@ -176,7 +176,7 @@ router.get('/:id/share', async (req, res) => {
       .from('quotes')
       .select('id, quote_number')
       .eq('id', id)
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .single();
 
     if (error || !data) return res.status(404).json({ error: 'Devis introuvable' });

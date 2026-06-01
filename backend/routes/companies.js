@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
     const { data, error } = await supabase
       .from('companies')
       .select('*')
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .order('created_at', { ascending: false });
 
     if (error) return res.status(400).json({ error: error.message });
@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
     const { data, error } = await supabase
       .from('companies')
       .insert({
-        user_id: req.user.sub,
+        user_id: req.user.id,
         name,
         email,
         phone,
@@ -66,7 +66,7 @@ router.put('/:id', async (req, res) => {
       .from('companies')
       .select('id')
       .eq('id', id)
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .single();
 
     if (fetchError || !existing) return res.status(404).json({ error: 'Entreprise introuvable' });
@@ -95,7 +95,7 @@ router.delete('/:id', async (req, res) => {
       .from('companies')
       .delete()
       .eq('id', id)
-      .eq('user_id', req.user.sub);
+      .eq('user_id', req.user.id);
 
     if (error) return res.status(400).json({ error: error.message });
 
@@ -117,7 +117,7 @@ router.post('/:id/signature', async (req, res) => {
       .from('companies')
       .select('id')
       .eq('id', id)
-      .eq('user_id', req.user.sub)
+      .eq('user_id', req.user.id)
       .single();
 
     if (fetchError || !existing) return res.status(404).json({ error: 'Entreprise introuvable' });
