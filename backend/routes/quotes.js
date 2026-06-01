@@ -61,7 +61,7 @@ router.post('/generate', async (req, res) => {
     }
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: `Tu es un assistant de génération de devis professionnels pour des entreprises africaines francophones. À partir de la description fournie, génère un devis structuré en JSON.
 
@@ -72,7 +72,10 @@ Règles importantes :
 - Calcule tva = total_ttc - total_ht (arrondi)
 - Répartis les prestations de façon logique pour que leur somme = total_ht
 - Si pas de budget mentionné, estime un prix marché africain raisonnable
-- Si le client n'est pas mentionné, utilise des placeholders réalistes
+- Analyse attentivement la description pour extraire :
+  client_name (nom du client ou de son entreprise), client_address (adresse mentionnée), client_email (email mentionné)
+  Si ces infos ne sont pas mentionnées, laisse les champs à "" (chaîne vide), PAS de placeholders comme "[Adresse du client]" ou "[Email du client]"
+- conditions_paiement : si des conditions de paiement sont mentionnées dans la description (ex: 30% avance, paiement à la livraison, etc.), utilise-les. Sinon, utilise "50% à la commande, 50% à la livraison" par défaut
 
 Réponds UNIQUEMENT avec ce JSON, sans texte autour :
 {
@@ -133,7 +136,9 @@ IMPORTANT : Si budget = 500000 FCFA alors :
 
     res.status(201).json({ quote: savedQuote });
   } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('Erreur génération devis:', err.message);
+    console.error('Stack:', err.stack);
+    res.status(500).json({ error: err.message });
   }
 });
 

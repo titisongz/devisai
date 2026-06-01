@@ -539,14 +539,18 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .qd-sign{text-align:center;font-size:12px;color:#9a9ab0}
 .qd-sign .line{width:160px;border-bottom:1.5px solid #c9c9d8;margin:34px auto 8px}
 
+@keyframes shareGlow{0%,100%{box-shadow:0 0 8px #2ecc71aa;transform:scale(1)}50%{box-shadow:0 0 20px #2ecc71;transform:scale(1.04)}}
+.share-btn-glow{padding:10px 20px;background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;font-weight:700;font-size:14px;border:none;border-radius:10px;cursor:pointer;animation:shareGlow 2s ease-in-out infinite}
+.ed-editable{outline:2px dashed #2ecc71;border-radius:4px;padding:2px 4px;cursor:text;min-width:40px;display:inline-block}
+
 .nq-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:22px}
-.sticky-actions{display:none}
+.sticky-actions{position:fixed;bottom:0;left:0;right:0;background:#0d0d2b;border-top:1px solid #1a1a4e;padding:16px 24px;display:flex;justify-content:flex-end;gap:12px;z-index:100}
+#quoteOut{padding-bottom:88px}
 
 @media (max-width:640px){
   .co-grid{flex-direction:column}
   .nq-actions{display:none}
-  .sticky-actions{display:flex;position:fixed;left:0;right:0;bottom:var(--bottomnav-h);z-index:34;gap:10px;padding:12px 14px calc(12px);background:rgba(13,13,43,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border)}
-  .sticky-actions .btn{flex:1;padding:0 8px;font-size:13.5px}
+  .sticky-actions{bottom:var(--bottomnav-h);gap:8px;padding:10px 12px}
   .content{padding-bottom:calc(var(--bottomnav-h) + 80px)}
   .qd-meta{text-align:left}
 }
@@ -584,6 +588,14 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <header class="topbar">
       <span class="page-title">Générer un devis</span>
       <div class="spacer"></div>
+      <div id="shareWrap" style="display:none;position:relative;margin-right:8px;">
+        <button class="share-btn-glow" onclick="window.toggleShareMenu(event)">↗ Partager</button>
+        <div id="shareMenu" style="display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:180px;background:#1e1e52;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.5);z-index:200">
+          <div onclick="shareWhatsApp()" style="display:flex;align-items:center;gap:10px;padding:13px 16px;font-size:14px;font-weight:500;color:#fff;cursor:pointer"><span style="width:10px;height:10px;border-radius:50%;background:#25D366;flex-shrink:0;display:inline-block"></span>WhatsApp</div>
+          <div onclick="shareTelegram()" style="display:flex;align-items:center;gap:10px;padding:13px 16px;font-size:14px;font-weight:500;color:#fff;cursor:pointer;border-top:1px solid rgba(255,255,255,.07)"><span style="width:10px;height:10px;border-radius:50%;background:#0088CC;flex-shrink:0;display:inline-block"></span>Telegram</div>
+          <div onclick="shareEmail()" style="display:flex;align-items:center;gap:10px;padding:13px 16px;font-size:14px;font-weight:500;color:#fff;cursor:pointer;border-top:1px solid rgba(255,255,255,.07)"><span style="width:10px;height:10px;border-radius:50%;background:#888;flex-shrink:0;display:inline-block"></span>Email</div>
+        </div>
+      </div>
       <a class="btn btn-ghost" href="dashboard.html"><i class="ic ic-sm" data-icon="chevL"></i> Retour</a>
     </header>
 
@@ -712,10 +724,11 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
   </div>
 </div>
 
-<!-- sticky mobile actions (only on step 3) -->
+<!-- barre sticky bas (visible uniquement à l'étape 3) -->
 <div class="sticky-actions" id="stickyActions" style="display:none">
-  <button class="btn btn-ghost" onclick="goStep(2)"><i class="ic ic-sm" data-icon="edit"></i> Modifier</button>
-  <button class="btn btn-secondary" onclick="toast('Export PDF généré','download')"><i class="ic ic-sm" data-icon="download"></i> PDF</button>
+  <button class="btn btn-ghost" onclick="toggleEdit()"><i class="ic ic-sm" data-icon="edit"></i> <span id="editBtnLabel">Modifier</span></button>
+  <button class="btn btn-ghost" onclick="goStep(2)">↺ Régénérer</button>
+  <button class="btn btn-secondary" onclick="toast('Export PDF — bientôt disponible','download')"><i class="ic ic-sm" data-icon="download"></i> PDF</button>
   <button class="btn btn-primary" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Enregistrer</button>
 </div>
 
@@ -948,6 +961,7 @@ function goStep(n){
   document.getElementById('line1').className='line '+(n>1?'fill':'');
   document.getElementById('line2').className='line '+(n>2?'fill':'');
   document.getElementById('stickyActions').style.display=(n===3)?'flex':'none';
+  document.getElementById('shareWrap').style.display=(n===3)?'block':'none';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -974,7 +988,7 @@ window.selectCompany = async function(id) {
   const token = getToken();
   const { data } = await getSupabaseClient(token)
     .from('companies')
-    .select('id, name, email, phone, address, logo_url, signature_base64, brand_color')
+    .select('id, name, email, phone, address, website, logo_url, signature_base64, brand_color')
     .eq('id', id)
     .single();
 
@@ -1093,9 +1107,10 @@ async function generate(){
 }
 
 function renderQuote(quote) {
+  isEditing = false;
   var content = quote.content || {};
   var prestations = content.prestations || [];
-  var company = window.selectedCompany || {};
+  var co = window.selectedCompany || {};
 
   // Recalcul frontend — ne pas faire confiance aux valeurs retournées par Claude
   var total_ttc = content.total_ttc || 0;
@@ -1103,34 +1118,55 @@ function renderQuote(quote) {
   var tva = total_ttc - total_ht;
   var taux_tva = content.taux_tva || 19.25;
 
-  var rows = prestations.map(function(p) {
-    return '<tr><td>' + p.description + (p.sous_detail ? '<div class="desc-sub">' + p.sous_detail + '</div>' : '') + '</td><td class="r">' + p.quantite + '</td><td class="r">' + fcfa(p.prix_unitaire) + '</td><td class="r">' + fcfa(p.total) + '</td></tr>';
+  var rows = prestations.map(function(p, i) {
+    return `<tr data-idx="${i}"><td><span class="ed-desc">${p.description}</span>${p.sous_detail ? `<div class="desc-sub"><span class="ed-sous">${p.sous_detail}</span></div>` : ''}</td><td class="r"><span class="ed-qte">${p.quantite}</span></td><td class="r"><span class="ed-prix" data-raw="${p.prix_unitaire}">${fcfa(p.prix_unitaire)}</span></td><td class="r ed-row-total">${fcfa(p.total)}</td></tr>`;
   }).join('');
 
-  var logoHtml = company.logo_url
-    ? '<div class="qd-logo-wrap"><img src="' + company.logo_url + '" alt="logo" class="qd-logo-img"></div>'
-    : '';
-
-  var signHtml = company.signature_base64
-    ? '<img src="' + company.signature_base64 + '" alt="Signature" class="qd-sign-img"><div class="line"></div>'
-    : 'Signature &amp; cachet<div class="line"></div>';
-
-  document.getElementById('quoteOut').innerHTML =
-    '<h2 class="step-title" style="display:flex;align-items:center;gap:10px">Votre devis est prêt <span class="badge badge-accent"><i class="ic ic-sm" data-icon="check"></i> Généré par IA</span></h2>' +
-    '<p class="step-sub">Vérifiez le contenu puis exportez-le ou sauvegardez-le.</p>' +
-    '<div class="quote-doc"><div class="qd-bar"></div><div class="qd-in">' +
-    '<div class="qd-head"><div class="qd-meta"><div class="tt">DEVIS</div><div class="sm">N° <b>' + quote.quote_number + '</b><br>Validité : ' + (content.validite_jours || 30) + ' jours</div></div>' + logoHtml + '</div>' +
-    '<div class="qd-client"><div class="blk"><div class="k">Client</div><div class="v"><b>' + (content.client_name || '') + '</b><br>' + (content.client_address || '') + '<br>' + (content.client_email || '') + '</div></div><div class="blk"><div class="k">Objet</div><div class="v">' + (content.objet || '') + '</div></div></div>' +
-    '<table class="qd-table"><thead><tr><th>Description</th><th class="r">Qté</th><th class="r">Prix unitaire</th><th class="r">Total HT</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="quote-totals"><div class="quote-total-row"><span>Total HT</span><span>' + total_ht.toLocaleString('fr-FR') + ' FCFA</span></div><div class="quote-total-row"><span>TVA (' + taux_tva + '%)</span><span>' + tva.toLocaleString('fr-FR') + ' FCFA</span></div><div class="quote-total-row total-ttc"><span>Total TTC</span><span>' + total_ttc.toLocaleString('fr-FR') + ' FCFA</span></div></div>' +
-    '<div class="qd-foot"><div class="cond"><b>Conditions de paiement</b>' + (content.conditions_paiement || '') + '</div><div class="qd-sign">' + signHtml + '</div></div>' +
-    '<div class="qd-qr"><div id="qrcode-box"></div><p class="qd-qr-label">Scanner pour accéder au devis</p></div>' +
-    '</div></div>' +
-    '<div class="nq-actions"><button class="btn btn-ghost btn-lg" onclick="goStep(2)"><i class="ic ic-sm" data-icon="edit"></i> Modifier</button><button class="btn btn-secondary btn-lg" onclick="toast(\'Export PDF — bientôt disponible\',\'download\')"><i class="ic ic-sm" data-icon="download"></i> Exporter en PDF</button><button class="btn btn-primary btn-lg" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Sauvegarder</button></div>';
+  document.getElementById('quoteOut').innerHTML = `
+    <h2 class="step-title" style="display:flex;align-items:center;gap:10px">Votre devis est prêt <span class="badge badge-accent"><i class="ic ic-sm" data-icon="check"></i> Généré par IA</span></h2>
+    <p class="step-sub">Vérifiez le contenu puis exportez-le ou sauvegardez-le.</p>
+    <div class="quote-doc"><div class="qd-bar"></div><div class="qd-in">
+      <div class="qd-head" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">
+        <div>
+          <h1 style="font-size:28px;font-weight:800;color:#16163a;margin:0;">DEVIS</h1>
+          <p style="margin:4px 0;color:#555;font-size:13px;">N° <strong>${quote.quote_number}</strong></p>
+          <p style="margin:4px 0;color:#555;font-size:13px;">Validité : ${content.validite_jours || 30} jours</p>
+          ${content.delai_realisation ? `<p style="margin:4px 0;color:#555;font-size:13px;">Délai : ${content.delai_realisation}</p>` : ''}
+        </div>
+        <div style="text-align:right;">
+          ${co.logo_url ? `<img src="${co.logo_url}" style="height:60px;max-width:150px;object-fit:contain;margin-bottom:8px;display:block;margin-left:auto;">` : ''}
+          <div style="font-size:15px;font-weight:700;color:#16163a;">${co.name || ''}</div>
+          ${co.email ? `<div style="font-size:12px;color:#555;">${co.email}</div>` : ''}
+          ${co.phone ? `<div style="font-size:12px;color:#555;">${co.phone}</div>` : ''}
+          ${co.address ? `<div style="font-size:12px;color:#555;">${co.address}</div>` : ''}
+          ${co.website ? `<div style="font-size:12px;color:#2ecc71;">${co.website}</div>` : ''}
+        </div>
+      </div>
+      <div class="qd-client">
+        <div class="blk"><div class="k">Client</div><div class="v"><b id="ed-client-name">${content.client_name || ''}</b><br><span id="ed-client-address">${content.client_address || ''}</span><br><span id="ed-client-email">${content.client_email || ''}</span></div></div>
+        <div class="blk"><div class="k">Objet</div><div class="v"><span id="ed-objet">${content.objet || ''}</span></div></div>
+      </div>
+      <table class="qd-table"><thead><tr><th>Description</th><th class="r">Qté</th><th class="r">Prix unitaire</th><th class="r">Total HT</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="quote-totals">
+        <div class="quote-total-row"><span>Total HT</span><span id="total-ht-display">${total_ht.toLocaleString('fr-FR')} FCFA</span></div>
+        <div class="quote-total-row"><span>TVA (${taux_tva}%)</span><span id="total-tva-display">${tva.toLocaleString('fr-FR')} FCFA</span></div>
+        <div class="quote-total-row total-ttc"><span>Total TTC</span><span id="total-ttc-display">${total_ttc.toLocaleString('fr-FR')} FCFA</span></div>
+      </div>
+      <div class="qd-foot">
+        <div class="cond"><b>Conditions de paiement</b><span id="ed-conditions">${content.conditions_paiement || ''}</span></div>
+        <div style="text-align:right;min-width:200px;">
+          <p style="font-size:11px;color:#888;margin-bottom:8px;">Signature &amp; cachet</p>
+          ${co.signature_base64 ? `<img src="${co.signature_base64}" style="height:120px;max-width:280px;object-fit:contain;filter:brightness(0) saturate(100%) invert(27%) sepia(100%) saturate(500%) hue-rotate(190deg);display:block;margin-left:auto;">` : '<div style="height:60px;border-bottom:1px solid #ccc;"></div>'}
+          <p style="font-size:12px;font-weight:600;color:#16163a;margin-top:8px;">${co.name || ''}</p>
+          ${co.address ? `<p style="font-size:11px;color:#555;margin:2px 0;">${co.address}</p>` : ''}
+        </div>
+      </div>
+      <div class="qd-qr"><div id="qrcode-box"></div><p class="qd-qr-label">Scanner pour accéder au devis</p></div>
+    </div></div>
+    `;
 
   hydrateIcons();
 
-  // Génération QR code
   var qrUrl = 'http://localhost:3000/api/quotes/' + quote.quote_number + '/share';
   new QRCode(document.getElementById('qrcode-box'), {
     text: qrUrl,
@@ -1140,6 +1176,142 @@ function renderQuote(quote) {
     colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.M
   });
+}
+
+var isEditing = false;
+
+window.toggleShareMenu = function(e) {
+  e.stopPropagation();
+  var menu = document.getElementById('shareMenu');
+  if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+};
+
+document.addEventListener('click', function() {
+  var menu = document.getElementById('shareMenu');
+  if (menu) menu.style.display = 'none';
+});
+
+function toggleEdit() {
+  isEditing = !isEditing;
+  var label = document.getElementById('editBtnLabel');
+  var ids = ['ed-client-name','ed-client-address','ed-client-email','ed-objet','ed-conditions'];
+  var clss = ['ed-desc','ed-sous','ed-qte','ed-prix'];
+  var allEls = ids.map(function(id){ return document.getElementById(id); })
+    .concat(Array.from(document.querySelectorAll(clss.map(function(c){return '.'+c;}).join(','))));
+
+  if (isEditing) {
+    allEls.forEach(function(el) {
+      if (!el) return;
+      el.contentEditable = 'true';
+      el.classList.add('ed-editable');
+    });
+    // Prix : afficher le nombre brut pour l'édition
+    document.querySelectorAll('.ed-prix').forEach(function(el) {
+      el.textContent = el.getAttribute('data-raw') || '';
+    });
+    if (label) { label.textContent = 'Terminer ✓'; label.style.color = '#2ecc71'; }
+  } else {
+    allEls.forEach(function(el) {
+      if (!el) return;
+      el.contentEditable = 'false';
+      el.classList.remove('ed-editable');
+    });
+    recalcTotals();
+    syncQuoteData();
+    if (label) { label.textContent = 'Modifier'; label.style.color = ''; }
+  }
+}
+
+function recalcTotals() {
+  var total_ht = 0;
+  document.querySelectorAll('tr[data-idx]').forEach(function(row) {
+    var prixEl = row.querySelector('.ed-prix');
+    var qteEl = row.querySelector('.ed-qte');
+    var totalCell = row.querySelector('.ed-row-total');
+    // Nettoyer espaces insécables et virgules avant parsing
+    var prix = parseFloat((prixEl ? prixEl.textContent : '0').replace(/[\s  ]/g, '').replace(',', '.')) || 0;
+    var qte = parseInt((qteEl ? qteEl.textContent : '1').replace(/[\s  ]/g, '')) || 1;
+    var rowTotal = prix * qte;
+    total_ht += rowTotal;
+    if (prixEl) { prixEl.setAttribute('data-raw', prix); prixEl.textContent = fcfa(prix); }
+    if (totalCell) totalCell.textContent = fcfa(rowTotal);
+  });
+  var ht = Math.round(total_ht);
+  var ttc = Math.round(total_ht * 1.1925);
+  var tva = ttc - ht;
+  var htEl = document.getElementById('total-ht-display');
+  var tvaEl = document.getElementById('total-tva-display');
+  var ttcEl = document.getElementById('total-ttc-display');
+  if (htEl) htEl.textContent = ht.toLocaleString('fr-FR') + ' FCFA';
+  if (tvaEl) tvaEl.textContent = tva.toLocaleString('fr-FR') + ' FCFA';
+  if (ttcEl) ttcEl.textContent = ttc.toLocaleString('fr-FR') + ' FCFA';
+}
+
+function syncQuoteData() {
+  if (!generatedQuote) return;
+  var content = generatedQuote.content || {};
+  var g = function(id) { var el = document.getElementById(id); return el ? el.textContent.trim() : ''; };
+  content.client_name = g('ed-client-name');
+  content.client_address = g('ed-client-address');
+  content.client_email = g('ed-client-email');
+  content.objet = g('ed-objet');
+  content.conditions_paiement = g('ed-conditions');
+  var prests = [];
+  document.querySelectorAll('tr[data-idx]').forEach(function(row) {
+    var desc = row.querySelector('.ed-desc');
+    var sous = row.querySelector('.ed-sous');
+    var qte = row.querySelector('.ed-qte');
+    var prix = row.querySelector('.ed-prix');
+    var prixV = parseFloat(prix ? prix.getAttribute('data-raw') || '0' : '0') || 0;
+    var qteV = parseInt(qte ? qte.textContent.replace(/[\s  ]/g, '') : '1') || 1;
+    prests.push({
+      description: desc ? desc.textContent.trim() : '',
+      sous_detail: sous ? sous.textContent.trim() : '',
+      quantite: qteV,
+      prix_unitaire: prixV,
+      total: prixV * qteV
+    });
+  });
+  content.prestations = prests;
+  var ht = prests.reduce(function(s, p) { return s + p.total; }, 0);
+  content.total_ht = Math.round(ht);
+  content.total_ttc = Math.round(ht * 1.1925);
+  content.tva = content.total_ttc - content.total_ht;
+  generatedQuote.content = content;
+}
+
+function buildShareData() {
+  if (!generatedQuote) return null;
+  var content = generatedQuote.content || {};
+  var co = window.selectedCompany || {};
+  var total_ttc = content.total_ttc || 0;
+  var qn = generatedQuote.quote_number || '';
+  return {
+    qn: qn,
+    objet: content.objet || '',
+    total_ttc: total_ttc,
+    conditions: content.conditions_paiement || '',
+    company: co.name || '',
+    client_email: content.client_email || '',
+    msg: 'Bonjour, veuillez trouver ci-joint notre devis N° ' + qn + ' d\'un montant de ' + total_ttc.toLocaleString('fr-FR') + ' FCFA. Validité : 30 jours.'
+  };
+}
+
+function shareWhatsApp() {
+  var d = buildShareData(); if (!d) return;
+  window.open('https://wa.me/?text=' + encodeURIComponent(d.msg), '_blank');
+}
+
+function shareTelegram() {
+  var d = buildShareData(); if (!d) return;
+  window.open('https://t.me/share/url?url=' + encodeURIComponent('http://localhost:3000') + '&text=' + encodeURIComponent(d.msg), '_blank');
+}
+
+function shareEmail() {
+  var d = buildShareData(); if (!d) return;
+  var subject = 'Devis N° ' + d.qn + ' - ' + d.objet;
+  var body = 'Bonjour,\n\nVeuillez trouver ci-joint notre devis N° ' + d.qn + '.\n\nMontant : ' + d.total_ttc.toLocaleString('fr-FR') + ' FCFA\nValidité : 30 jours\nConditions : ' + d.conditions + '\n\nCordialement,\n' + d.company;
+  window.location.href = 'mailto:' + d.client_email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
 
 function saveQuote(){
