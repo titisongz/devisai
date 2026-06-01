@@ -642,7 +642,7 @@ async function handleGoogleLogin() {
   const { error } = await getSupabaseClient().auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: '/auth-callback.html'
+      redirectTo: window.location.origin + '/auth-callback.html'
     }
   });
   if (error) alert('Erreur Google : ' + error.message);
@@ -658,7 +658,7 @@ async function handleForgotPassword(e){
   }
   var client = getSupabaseClient();
   var { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/devis-ai/project/login.html'
+    redirectTo: window.location.origin + '/login.html'
   });
   if(error){
     toast('Erreur : ' + error.message, 'x');
