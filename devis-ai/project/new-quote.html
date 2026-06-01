@@ -367,18 +367,23 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 @media (max-width:560px){
   .grid.cols-2,.grid.cols-3{grid-template-columns:1fr!important}
 }
+.companies-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
 .company-card {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px 20px;
+  gap: 16px;
+  padding: 18px 20px;
   background: #1a1a4e;
   border: 2px solid transparent;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 220px;
-  max-width: 300px;
+  position: relative;
 }
 .company-card:hover {
   background: #1f1f5e;
@@ -386,24 +391,53 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 }
 .company-card.selected {
   border-color: #2ecc71;
-  background: #1f1f5e;
+  background: #1a3a2a;
+}
+.company-card-check {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  background: #2ecc71;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 13px;
+}
+.company-card.selected .company-card-check {
+  display: flex;
 }
 .company-logo-thumb {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   flex-shrink: 0;
+}
+.company-card-info {
+  flex: 1;
+  min-width: 0;
 }
 .company-card-name {
   color: #ffffff;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.3;
-  word-break: break-word;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.company-card-email {
+  color: #888;
+  font-size: 12px;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
 <style>
@@ -557,9 +591,11 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
         <section class="step show" id="step1">
           <h2 class="step-title">Quelle entreprise émet ce devis ?</h2>
           <p class="step-sub">Ses coordonnées et son logo apparaîtront en en-tête.</p>
-          <div class="co-grid">
-            <div id="coList" style="display:contents"></div>
-            <a class="co-card co-add" href="companies.html"><i class="ic" data-icon="plus"></i> Ajouter une entreprise</a>
+          <div class="companies-grid" id="coList">
+            <div class="company-card" style="border: 2px dashed #333; background: transparent; justify-content: center; color: #888;" onclick="window.location.href='companies.html'">
+              <span style="font-size: 20px; margin-right: 8px;">+</span>
+              <span>Ajouter une entreprise</span>
+            </div>
           </div>
           <div class="nq-actions"><button class="btn btn-primary btn-lg" onclick="goStep(2)">Continuer <i class="ic ic-sm" data-icon="arrowR"></i></button></div>
         </section>
@@ -789,8 +825,6 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 })();
 </script>
 <script>
-checkAuth();
-
 var selectedCompanyId = null;
 var generatedQuote = null;
 
@@ -808,52 +842,52 @@ async function chargerEntreprises() {
 
   let companies;
 
+  const btnAjouter = `
+    <div class="company-card" style="border:2px dashed #333; background:transparent; justify-content:center; color:#888;" onclick="window.location.href='companies.html'">
+      <span style="font-size:20px; margin-right:8px;">+</span>
+      <span>Ajouter une entreprise</span>
+    </div>`;
+
   if (cachedData && cachedTime && (maintenant - parseInt(cachedTime)) < dureeCache) {
     companies = JSON.parse(cachedData);
   } else {
     if (coList) {
       coList.innerHTML = Array(2).fill(`
-        <div style="
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          padding: 16px 20px;
-          background: #1a1a4e;
-          border-radius: 12px;
-          min-width: 220px;
-          max-width: 300px;
-          animation: pulse 1.5s ease-in-out infinite;
-        ">
-          <div style="width:52px; height:52px; border-radius:10px; background:#2a2a6e; flex-shrink:0;"></div>
+        <div class="company-card" style="animation:pulse 1.5s ease-in-out infinite; pointer-events:none;">
+          <div style="width:48px; height:48px; border-radius:10px; background:#2a2a6e; flex-shrink:0;"></div>
           <div style="flex:1;">
             <div style="height:12px; background:#2a2a6e; border-radius:6px; width:70%; margin-bottom:8px;"></div>
             <div style="height:10px; background:#2a2a6e; border-radius:6px; width:40%;"></div>
           </div>
         </div>
-      `).join('');
+      `).join('') + btnAjouter;
     }
 
-    const token = await getValidToken();
+    const token = getToken();
     if (!token) return;
     const { data } = await getSupabaseClient(token)
       .from('companies')
-      .select('id, name, logo_url, brand_color');
+      .select('id, name, email, brand_color');
     companies = data || [];
     localStorage.setItem(cacheKey, JSON.stringify(companies));
     localStorage.setItem(cacheTime, maintenant.toString());
   }
 
-  const carteHTML = (c) => `
-    <div class="company-card" data-id="${c.id}" onclick="window.selectCompany('${c.id}')">
-      <div class="company-logo-thumb" style="background:${c.brand_color || '#2ecc71'}">
-        ${c.logo_url
-          ? `<img src="${c.logo_url}" alt="${c.name}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`
-          : `<span style="color:#fff; font-weight:700; font-size:22px;">${c.name[0].toUpperCase()}</span>`
-        }
+  const carteHTML = (c) => {
+    const initiales = (c.name.split(' ').map(w => w[0]).join('').substring(0, 2)).toUpperCase();
+    return `
+      <div class="company-card" data-id="${c.id}" onclick="window.selectCompany('${c.id}')">
+        <div class="company-card-check">✓</div>
+        <div class="company-logo-thumb" style="background:${c.brand_color || '#2ecc71'}">
+          <span style="color:#fff; font-weight:700; font-size:18px;">${initiales}</span>
+        </div>
+        <div class="company-card-info">
+          <div class="company-card-name">${c.name}</div>
+          <div class="company-card-email">${c.email || ''}</div>
+        </div>
       </div>
-      <span class="company-card-name">${c.name}</span>
-    </div>
-  `;
+    `;
+  };
 
   if (select) {
     select.disabled = false;
@@ -864,12 +898,15 @@ async function chargerEntreprises() {
 
   if (coList) {
     coList.innerHTML = companies.length === 0
-      ? '<p style="color:#888;">Aucune entreprise configurée</p>'
-      : companies.map(carteHTML).join('');
+      ? '<p style="color:#888; grid-column:1/-1;">Aucune entreprise configurée</p>' + btnAjouter
+      : companies.map(carteHTML).join('') + btnAjouter;
   }
 }
 
-chargerEntreprises();
+(async () => {
+  await checkAuth();
+  chargerEntreprises();
+})();
 
 function goStep(n){
   [1,2,3].forEach(function(i){document.getElementById('step'+i).classList.toggle('show',i===n);});
@@ -883,7 +920,7 @@ function goStep(n){
 }
 
 window.selectCompany = function(id) {
-  document.querySelectorAll('.company-card').forEach(card => {
+  document.querySelectorAll('.company-card[data-id]').forEach(card => {
     card.classList.remove('selected');
   });
 
