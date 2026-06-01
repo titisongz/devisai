@@ -732,6 +732,23 @@ async function loadDashboardStats() {
   }
 
   hydrateIcons(nomEntreprises);
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('first_name, last_name, email, full_name')
+    .eq('id', (await supabase.auth.getUser()).data.user?.id)
+    .single();
+
+  if (profile?.first_name) {
+    const user = JSON.parse(localStorage.getItem('devisai_user') || '{}');
+    user.first_name = profile.first_name;
+    user.last_name = profile.last_name || '';
+    user.full_name = profile.full_name || profile.first_name + ' ' + profile.last_name;
+    localStorage.setItem('devisai_user', JSON.stringify(user));
+
+    const greeting = document.getElementById('dashGreeting');
+    if (greeting) greeting.textContent = 'Bonjour ' + profile.first_name + ' 👋';
+  }
 }
 
 document.querySelector('.derniers-devis-tbody').innerHTML = Array(3).fill(`
