@@ -524,6 +524,15 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .qd-totals{margin-left:auto;width:min(320px,100%);font-size:14px}
 .qd-totals .tr{display:flex;justify-content:space-between;padding:8px 8px;color:#4a4a63}
 .qd-totals .tr.ttc{margin-top:6px;padding:14px 16px;background:#eafaf0;border-radius:10px;font-size:17px;font-weight:800;color:#16163a}
+.quote-totals{margin-left:auto;width:min(340px,100%);font-size:14px;display:flex;flex-direction:column;gap:2px}
+.quote-total-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;color:#4a4a63;border-radius:8px}
+.quote-total-row span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+.quote-total-row.total-ttc{margin-top:6px;padding:14px 16px;background:#eafaf0;border-radius:10px;font-size:17px;font-weight:800;color:#16163a}
+.qd-logo-wrap{display:flex;align-items:center;justify-content:flex-end}
+.qd-logo-img{max-height:60px;max-width:160px;object-fit:contain;border-radius:6px}
+.qd-sign-img{max-height:70px;max-width:160px;object-fit:contain;margin-bottom:4px}
+.qd-qr{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:20px;border-top:1px solid #e7e7ef;margin-top:20px}
+.qd-qr-label{font-size:11px;color:#9a9ab0;margin:0}
 .qd-foot{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;margin-top:26px;padding-top:20px;border-top:1px solid #e7e7ef}
 .qd-foot .cond{font-size:12.5px;color:#6a6a82;line-height:1.7;max-width:46ch}
 .qd-foot .cond b{color:#16163a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-size:11px}
@@ -543,6 +552,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 </head>
@@ -941,18 +951,36 @@ function goStep(n){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-window.selectCompany = function(id) {
-  document.querySelectorAll('.company-card[data-id]').forEach(card => {
+window.selectCompany = async function(id) {
+  document.querySelectorAll('.company-card').forEach(card => {
     card.classList.remove('selected');
+    const check = card.querySelector('.company-card-check');
+    if (check) check.style.display = 'none';
   });
 
   const selected = document.querySelector(`.company-card[data-id="${id}"]`);
-  if (selected) selected.classList.add('selected');
+  if (selected) {
+    selected.classList.add('selected');
+    const check = selected.querySelector('.company-card-check');
+    if (check) check.style.display = 'flex';
+  }
 
   const select = document.getElementById('company-select');
   if (select) select.value = id;
 
   window.selectedCompanyId = id;
+
+  // Charger les détails complets de l'entreprise sélectionnée
+  const token = getToken();
+  const { data } = await getSupabaseClient(token)
+    .from('companies')
+    .select('id, name, email, phone, address, logo_url, signature_base64, brand_color')
+    .eq('id', id)
+    .single();
+
+  if (data) {
+    window.selectedCompany = data;
+  }
 };
 
 function setMode(m){
@@ -1067,12 +1095,51 @@ async function generate(){
 function renderQuote(quote) {
   var content = quote.content || {};
   var prestations = content.prestations || [];
+  var company = window.selectedCompany || {};
+
+  // Recalcul frontend — ne pas faire confiance aux valeurs retournées par Claude
+  var total_ttc = content.total_ttc || 0;
+  var total_ht = Math.round(total_ttc / 1.1925);
+  var tva = total_ttc - total_ht;
+  var taux_tva = content.taux_tva || 19.25;
+
   var rows = prestations.map(function(p) {
     return '<tr><td>' + p.description + (p.sous_detail ? '<div class="desc-sub">' + p.sous_detail + '</div>' : '') + '</td><td class="r">' + p.quantite + '</td><td class="r">' + fcfa(p.prix_unitaire) + '</td><td class="r">' + fcfa(p.total) + '</td></tr>';
   }).join('');
-  var tva = content.taux_taxe > 0 ? '<div class="tr"><span>Taxes / TVA (' + content.taux_taxe + '%)</span><span class="num">' + fcfa(content.montant_taxe) + '</span></div>' : '';
-  document.getElementById('quoteOut').innerHTML = '<h2 class="step-title" style="display:flex;align-items:center;gap:10px">Votre devis est prêt <span class="badge badge-accent"><i class="ic ic-sm" data-icon="check"></i> Généré par IA</span></h2><p class="step-sub">Vérifiez le contenu puis exportez-le ou sauvegardez-le.</p><div class="quote-doc"><div class="qd-bar"></div><div class="qd-in"><div class="qd-head"><div class="qd-meta"><div class="tt">DEVIS</div><div class="sm">N° <b>' + quote.quote_number + '</b><br>Validité : ' + (content.validite_jours || 30) + ' jours</div></div></div><div class="qd-client"><div class="blk"><div class="k">Client</div><div class="v"><b>' + (content.client_name || '') + '</b><br>' + (content.client_address || '') + '<br>' + (content.client_email || '') + '</div></div><div class="blk"><div class="k">Objet</div><div class="v">' + (content.objet || '') + '</div></div></div><table class="qd-table"><thead><tr><th>Description</th><th class="r">Qté</th><th class="r">Prix unitaire</th><th class="r">Total HT</th></tr></thead><tbody>' + rows + '</tbody></table><div class="qd-totals"><div class="tr"><span>Total HT</span><span class="num">' + fcfa(content.total_ht) + '</span></div>' + tva + '<div class="tr ttc"><span>Total TTC</span><span class="num">' + fcfa(content.total_ttc) + '</span></div></div><div class="qd-foot"><div class="cond"><b>Conditions de paiement</b>' + (content.conditions_paiement || '') + '</div><div class="qd-sign">Signature &amp; cachet<div class="line"></div></div></div></div></div><div class="nq-actions"><button class="btn btn-ghost btn-lg" onclick="goStep(2)"><i class="ic ic-sm" data-icon="edit"></i> Modifier</button><button class="btn btn-secondary btn-lg" onclick="toast(\'Export PDF — bientôt disponible\',\'download\')"><i class="ic ic-sm" data-icon="download"></i> Exporter en PDF</button><button class="btn btn-primary btn-lg" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Sauvegarder</button></div>';
+
+  var logoHtml = company.logo_url
+    ? '<div class="qd-logo-wrap"><img src="' + company.logo_url + '" alt="logo" class="qd-logo-img"></div>'
+    : '';
+
+  var signHtml = company.signature_base64
+    ? '<img src="' + company.signature_base64 + '" alt="Signature" class="qd-sign-img"><div class="line"></div>'
+    : 'Signature &amp; cachet<div class="line"></div>';
+
+  document.getElementById('quoteOut').innerHTML =
+    '<h2 class="step-title" style="display:flex;align-items:center;gap:10px">Votre devis est prêt <span class="badge badge-accent"><i class="ic ic-sm" data-icon="check"></i> Généré par IA</span></h2>' +
+    '<p class="step-sub">Vérifiez le contenu puis exportez-le ou sauvegardez-le.</p>' +
+    '<div class="quote-doc"><div class="qd-bar"></div><div class="qd-in">' +
+    '<div class="qd-head"><div class="qd-meta"><div class="tt">DEVIS</div><div class="sm">N° <b>' + quote.quote_number + '</b><br>Validité : ' + (content.validite_jours || 30) + ' jours</div></div>' + logoHtml + '</div>' +
+    '<div class="qd-client"><div class="blk"><div class="k">Client</div><div class="v"><b>' + (content.client_name || '') + '</b><br>' + (content.client_address || '') + '<br>' + (content.client_email || '') + '</div></div><div class="blk"><div class="k">Objet</div><div class="v">' + (content.objet || '') + '</div></div></div>' +
+    '<table class="qd-table"><thead><tr><th>Description</th><th class="r">Qté</th><th class="r">Prix unitaire</th><th class="r">Total HT</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="quote-totals"><div class="quote-total-row"><span>Total HT</span><span>' + total_ht.toLocaleString('fr-FR') + ' FCFA</span></div><div class="quote-total-row"><span>TVA (' + taux_tva + '%)</span><span>' + tva.toLocaleString('fr-FR') + ' FCFA</span></div><div class="quote-total-row total-ttc"><span>Total TTC</span><span>' + total_ttc.toLocaleString('fr-FR') + ' FCFA</span></div></div>' +
+    '<div class="qd-foot"><div class="cond"><b>Conditions de paiement</b>' + (content.conditions_paiement || '') + '</div><div class="qd-sign">' + signHtml + '</div></div>' +
+    '<div class="qd-qr"><div id="qrcode-box"></div><p class="qd-qr-label">Scanner pour accéder au devis</p></div>' +
+    '</div></div>' +
+    '<div class="nq-actions"><button class="btn btn-ghost btn-lg" onclick="goStep(2)"><i class="ic ic-sm" data-icon="edit"></i> Modifier</button><button class="btn btn-secondary btn-lg" onclick="toast(\'Export PDF — bientôt disponible\',\'download\')"><i class="ic ic-sm" data-icon="download"></i> Exporter en PDF</button><button class="btn btn-primary btn-lg" onclick="saveQuote()"><i class="ic ic-sm" data-icon="check"></i> Sauvegarder</button></div>';
+
   hydrateIcons();
+
+  // Génération QR code
+  var qrUrl = 'http://localhost:3000/api/quotes/' + quote.quote_number + '/share';
+  new QRCode(document.getElementById('qrcode-box'), {
+    text: qrUrl,
+    width: 96,
+    height: 96,
+    colorDark: '#16163a',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
 }
 
 function saveQuote(){

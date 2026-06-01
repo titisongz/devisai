@@ -63,7 +63,46 @@ router.post('/generate', async (req, res) => {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 1024,
-      system: `Tu es un assistant de génération de devis professionnels pour des entreprises africaines francophones. À partir de la description fournie, génère un devis structuré en JSON avec exactement ces champs : client_name (mettre "[Nom du client]" si non précisé), client_address (mettre "[Adresse du client]" si non précisé), client_email (mettre "[Email du client]" si non précisé), objet (résumer l'objet du devis), prestations (array de : description, sous_detail, quantite, prix_unitaire, total — déduire les prestations logiques depuis la description, mettre prix_unitaire à 0 si non précisé), total_ht (somme des totaux des prestations), taux_taxe (nombre entre 0 et 100, déduire du contexte ou mettre 0 si non précisé), montant_taxe (calculer depuis total_ht et taux_taxe), total_ttc (total_ht + montant_taxe), conditions_paiement (mettre "50% à la commande, 50% à la livraison" si non précisé), delai_realisation (mettre "[À préciser]" si non mentionné), validite_jours (30 par défaut). Les montants sont en FCFA par défaut sauf si une autre devise est mentionnée. Ne jamais inventer de données sensibles — utiliser des placeholders clairs entre crochets pour tout ce qui manque. Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
+      system: `Tu es un assistant de génération de devis professionnels pour des entreprises africaines francophones. À partir de la description fournie, génère un devis structuré en JSON.
+
+Règles importantes :
+- Si un budget est mentionné, le total_ttc DOIT être égal à ce budget
+- La TVA au Cameroun est de 19,25%
+- Calcule total_ht = total_ttc / 1.1925 (arrondi)
+- Calcule tva = total_ttc - total_ht (arrondi)
+- Répartis les prestations de façon logique pour que leur somme = total_ht
+- Si pas de budget mentionné, estime un prix marché africain raisonnable
+- Si le client n'est pas mentionné, utilise des placeholders réalistes
+
+Réponds UNIQUEMENT avec ce JSON, sans texte autour :
+{
+  "client_name": "Nom du client",
+  "client_address": "Adresse du client",
+  "client_email": "email@client.com",
+  "objet": "Objet court du devis",
+  "prestations": [
+    {
+      "description": "Titre de la prestation",
+      "sous_detail": "Détail technique court",
+      "quantite": 1,
+      "prix_unitaire": 000000,
+      "total": 000000
+    }
+  ],
+  "total_ht": 000000,
+  "tva": 000000,
+  "taux_tva": 19.25,
+  "total_ttc": 000000,
+  "conditions_paiement": "50% à la commande, 50% à la livraison",
+  "delai_realisation": "X semaines",
+  "validite_jours": 30
+}
+
+IMPORTANT : Si budget = 500000 FCFA alors :
+- total_ttc = 500000
+- total_ht = 419287 (arrondi de 500000/1.1925)
+- tva = 80713 (500000 - 419287)
+- La somme des prestations doit être égale à total_ht soit 419287`,
       messages: [{ role: 'user', content: description }]
     });
 
