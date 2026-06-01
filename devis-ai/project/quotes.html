@@ -436,6 +436,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 </head>
 <body>
 <div class="drawer-scrim"></div>
@@ -472,7 +473,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <div class="content" data-screen-label="quotes">
       <div class="content-wrap">
         <div class="page-head reveal">
-          <div><h1>Mes devis</h1><div class="sub">38 devis · 8,4M FCFA générés</div></div>
+          <div><h1>Mes devis</h1><div class="sub quotes-stats">Chargement...</div></div>
         </div>
 
         <!-- FILTERS -->
@@ -486,10 +487,8 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
             <button class="chip" data-f="refuse" onclick="filterStatus(this)">Refusé</button>
           </div>
           <div class="spacer"></div>
-          <select class="input" id="coFilter" onchange="applyFilters()">
+          <select class="input" id="filter-entreprise" onchange="applyFilters()">
             <option value="all">Toutes les entreprises</option>
-            <option value="Bâti Plus">Bâti Plus</option>
-            <option value="Digital Sahel">Digital Sahel</option>
           </select>
           <select class="input" onchange="toast('Filtre par période — démo','calendar')">
             <option>Tout l'historique</option><option>30 derniers jours</option><option>Ce trimestre</option><option>Cette année</option>
@@ -501,19 +500,10 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
           <div class="table-wrap">
             <table class="data" id="qTable">
               <thead><tr><th>N° devis</th><th>Entreprise</th><th>Client</th><th>Montant</th><th>Statut</th><th>Date</th><th></th></tr></thead>
-              <tbody id="qBody"></tbody>
+              <tbody id="qBody" class="quotes-tbody"></tbody>
             </table>
           </div>
-          <div class="pagination">
-            <span class="info">1–8 sur 38 devis</span>
-            <div class="pages">
-              <button onclick="toast('Page précédente','chevL')"><i class="ic ic-sm" data-icon="chevL"></i></button>
-              <button class="active">1</button>
-              <button onclick="toast('Page 2','file')">2</button>
-              <button onclick="toast('Page 3','file')">3</button>
-              <button onclick="toast('Page suivante','chevR')"><i class="ic ic-sm" data-icon="chevR"></i></button>
-            </div>
-          </div>
+          <div class="pagination quotes-pagination"></div>
         </div>
 
         <!-- MOBILE CARDS -->
@@ -551,9 +541,8 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     </div>
   </div>
   <div class="pv-foot">
-    <button class="btn btn-secondary" onclick="toast('Aperçu PDF','eye')"><i class="ic ic-sm" data-icon="eye"></i> Aperçu</button>
-    <button class="btn btn-secondary" onclick="toast('Devis dupliqué','copy')"><i class="ic ic-sm" data-icon="copy"></i> Dupliquer</button>
-    <button class="btn btn-primary full" onclick="toast('Téléchargement du PDF','download')"><i class="ic ic-sm" data-icon="download"></i> Télécharger le PDF</button>
+    <button class="btn btn-secondary" onclick="dupliquerDevis(currentPvId)"><i class="ic ic-sm" data-icon="copy"></i> Dupliquer</button>
+    <button class="btn btn-primary full" onclick="exporterDevisPDF(currentPvId)"><i class="ic ic-sm" data-icon="download"></i> Télécharger le PDF</button>
   </div>
 </aside>
 
@@ -674,93 +663,293 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 })();
 </script>
 <script>
-var QUOTES=[
-  {n:'DV-2026-0042',co:'Bâti Plus',client:'Société Teranga SARL',amount:1250000,status:'accepte',date:'28 mai 2026'},
-  {n:'DV-2026-0041',co:'Bâti Plus',client:'Boutique Awa',amount:480000,status:'attente',date:'26 mai 2026'},
-  {n:'DV-2026-0040',co:'Digital Sahel',client:'Mairie de Thiès',amount:3600000,status:'envoye',date:'24 mai 2026'},
-  {n:'DV-2026-0039',co:'Digital Sahel',client:'Resto Le Baobab',amount:720000,status:'brouillon',date:'22 mai 2026'},
-  {n:'DV-2026-0038',co:'Bâti Plus',client:'Hôtel Téranga',amount:5400000,status:'accepte',date:'18 mai 2026'},
-  {n:'DV-2026-0037',co:'Digital Sahel',client:'Pharmacie Liberté',amount:950000,status:'refuse',date:'15 mai 2026'},
-  {n:'DV-2026-0036',co:'Bâti Plus',client:'Ecole Les Lauréats',amount:2100000,status:'envoye',date:'12 mai 2026'},
-  {n:'DV-2026-0035',co:'Digital Sahel',client:'Garage Sénégal Auto',amount:660000,status:'accepte',date:'9 mai 2026'}
-];
-var STATUS={accepte:['Accepté','badge-accent'],attente:['En attente','badge-warn'],envoye:['Envoyé','badge-info'],brouillon:['Brouillon','badge-neutral'],refuse:['Refusé','badge-danger']};
-function badge(s){var x=STATUS[s];return '<span class="badge '+x[1]+'"><span class="dot"></span>'+x[0]+'</span>';}
+var allDevis = [];
+var tousLesDevis = [];
+var currentPage = 1;
+var itemsParPage = 8;
+var currentPvId = null;
+var curStatus = 'all';
 
-function renderTable(){
-  var b=document.getElementById('qBody');b.innerHTML='';
-  QUOTES.forEach(function(q){
-    var tr=document.createElement('tr');
-    tr.dataset.status=q.status;tr.dataset.co=q.co;
-    tr.onclick=function(){openPv(q);};
-    tr.innerHTML='<td data-label="N°"><span class="q-num">'+q.n+'</span></td>'+
-      '<td data-label="Entreprise"><span class="cell-strong">'+q.co+'</span></td>'+
-      '<td data-label="Client">'+q.client+'</td>'+
-      '<td data-label="Montant"><span class="amount">'+fcfa(q.amount)+'</span></td>'+
-      '<td data-label="Statut">'+badge(q.status)+'</td>'+
-      '<td data-label="Date">'+q.date+'</td>'+
-      '<td><div class="row-actions">'+
-        '<button class="iconbtn" title="Aperçu" onclick="event.stopPropagation()"><i class="ic" data-icon="eye"></i></button>'+
-        '<button class="iconbtn" title="PDF" onclick="event.stopPropagation();toast(\'Téléchargement\',\'download\')"><i class="ic" data-icon="download"></i></button>'+
-        '<button class="iconbtn" title="Dupliquer" onclick="event.stopPropagation();toast(\'Dupliqué\',\'copy\')"><i class="ic" data-icon="copy"></i></button>'+
-      '</div></td>';
-    b.appendChild(tr);
-  });
-  hydrateIcons(b);
+/* --- Statuts --- */
+var STATUS_LABELS = {
+  'brouillon': ['Brouillon', 'badge-neutral'],
+  'draft':     ['Brouillon', 'badge-neutral'],
+  'envoye':    ['Envoyé',    'badge-info'],
+  'envoyé':    ['Envoyé',    'badge-info'],
+  'sent':      ['Envoyé',    'badge-info'],
+  'accepte':   ['Accepté',   'badge-accent'],
+  'accepté':   ['Accepté',   'badge-accent'],
+  'accepted':  ['Accepté',   'badge-accent'],
+  'attente':   ['En attente','badge-warn'],
+  'en attente':['En attente','badge-warn'],
+  'pending':   ['En attente','badge-warn'],
+  'refuse':    ['Refusé',    'badge-danger'],
+  'refusé':    ['Refusé',    'badge-danger'],
+  'refused':   ['Refusé',    'badge-danger']
+};
+
+function badge(s) {
+  var key = (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  var x = STATUS_LABELS[key] || STATUS_LABELS[s] || ['—', 'badge-neutral'];
+  return '<span class="badge ' + x[1] + '"><span class="dot"></span>' + x[0] + '</span>';
 }
-function renderCards(){
-  var c=document.getElementById('qCards');c.innerHTML='';
-  QUOTES.forEach(function(q){
-    var w=document.createElement('div');w.className='swipe';w.dataset.status=q.status;w.dataset.co=q.co;
-    w.innerHTML='<div class="swipe-bg"><div class="side left"><i class="ic ic-sm" data-icon="download"></i>PDF</div><div class="side right"><i class="ic ic-sm" data-icon="trash"></i>Suppr.</div></div>'+
-      '<div class="swipe-front">'+
-        '<div class="top"><div><div class="client">'+q.client+'</div><div class="co">'+q.co+' · '+q.n+'</div></div>'+badge(q.status)+'</div>'+
-        '<div class="mid"><span class="amount num">'+fcfa(q.amount)+'</span><span class="date">'+q.date+'</span></div>'+
+
+function normalizeStatus(s) {
+  var n = (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '');
+  var map = { draft: 'brouillon', sent: 'envoye', accepted: 'accepte', refused: 'refuse', pending: 'attente', enattentte: 'attente' };
+  return map[n] || n;
+}
+
+/* --- Chargement Supabase --- */
+async function chargerDevis() {
+  const token = await getValidToken();
+  if (!token) return;
+
+  const sb = getSupabaseClient(token);
+
+  const { data: companies } = await sb.from('companies').select('id, name');
+
+  const selectEntreprise = document.getElementById('filter-entreprise');
+  if (selectEntreprise && companies) {
+    while (selectEntreprise.options.length > 1) selectEntreprise.remove(1);
+    companies.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      selectEntreprise.appendChild(opt);
+    });
+  }
+
+  const { data: devis } = await sb
+    .from('quotes')
+    .select('*, companies(name)', { count: 'exact' })
+    .order('created_at', { ascending: false });
+
+  const devisCorrigés = (devis || []).map(d => {
+    if (!d.total_amount && d.content?.total_ttc) {
+      d.total_amount = d.content.total_ttc;
+    }
+    return d;
+  });
+  allDevis = devisCorrigés;
+
+  var totalAmount = allDevis.reduce(function(sum, d) { return sum + (d.total_amount || 0); }, 0);
+  var statsEl = document.querySelector('.quotes-stats');
+  if (statsEl) statsEl.textContent = allDevis.length + ' devis · ' + totalAmount.toLocaleString('fr-FR') + ' FCFA générés';
+
+  afficherDevis(allDevis);
+}
+
+function afficherDevis(devis) {
+  tousLesDevis = devis;
+  currentPage = 1;
+  afficherPage(1);
+  afficherPagination();
+  renderMobileCards(devis);
+}
+
+function afficherPage(page) {
+  currentPage = page;
+  const tbody = document.querySelector('.quotes-tbody');
+  if (!tbody) return;
+
+  const debut = (page - 1) * itemsParPage;
+  const fin = debut + itemsParPage;
+  const devisPage = tousLesDevis.slice(debut, fin);
+
+  if (tousLesDevis.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">Aucun devis pour le moment</td></tr>';
+    afficherPagination();
+    return;
+  }
+
+  const statusColors = {
+    'accepté': '#2ecc71', 'accepte': '#2ecc71', 'accepted': '#2ecc71',
+    'envoyé':  '#3498db', 'envoye':  '#3498db', 'sent':     '#3498db',
+    'brouillon':'#888',   'draft':   '#888',
+    'refusé':  '#e74c3c', 'refuse':  '#e74c3c', 'refused':  '#e74c3c',
+    'en attente':'#f39c12','attente': '#f39c12', 'pending':  '#f39c12'
+  };
+
+  tbody.innerHTML = devisPage.map(d => {
+    const date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    const montant = (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA';
+    const entreprise = d.companies?.name || '—';
+    const clientName = d.content?.client_name || d.client_name || '—';
+    const statut = (d.status || '').toLowerCase();
+    const couleur = statusColors[statut] || '#888';
+    const statusLabel = d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—';
+
+    return `<tr onclick="voirDevis('${d.id}')">
+      <td data-label="N°"><span class="q-num">${d.quote_number || '—'}</span></td>
+      <td data-label="Entreprise"><span class="cell-strong">${entreprise}</span></td>
+      <td data-label="Client">${clientName}</td>
+      <td data-label="Montant"><span class="amount num">${montant}</span></td>
+      <td data-label="Statut"><span style="background:${couleur}22;color:${couleur};padding:4px 10px;border-radius:20px;font-size:12px;">${statusLabel}</span></td>
+      <td data-label="Date">${date}</td>
+      <td style="vertical-align:middle;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="voirDevis('${d.id}')" title="Voir" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;line-height:1;">👁</button>
+          <button onclick="exporterDevisPDF('${d.id}')" title="Télécharger PDF" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;line-height:1;">⬇</button>
+          <button onclick="dupliquerDevis('${d.id}')" title="Dupliquer" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;line-height:1;">⧉</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  afficherPagination();
+}
+
+function afficherPagination() {
+  const pagination = document.querySelector('.quotes-pagination');
+  if (!pagination) return;
+
+  const totalPages = Math.ceil(tousLesDevis.length / itemsParPage);
+  if (totalPages <= 1) {
+    pagination.innerHTML = '';
+    return;
+  }
+
+  let html = `<span style="color:#888;font-size:13px;">${Math.min((currentPage - 1) * itemsParPage + 1, tousLesDevis.length)}–${Math.min(currentPage * itemsParPage, tousLesDevis.length)} sur ${tousLesDevis.length} devis</span>`;
+  html += `<div style="display:flex;gap:6px;align-items:center;">`;
+  html += `<button onclick="afficherPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} style="background:#1a1a4e;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;opacity:${currentPage === 1 ? '.4' : '1'}">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button onclick="afficherPage(${i})" style="background:${i === currentPage ? '#2ecc71' : '#1a1a4e'};border:none;color:${i === currentPage ? '#06210f' : '#fff'};padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:${i === currentPage ? '700' : '400'}">${i}</button>`;
+  }
+  html += `<button onclick="afficherPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} style="background:#1a1a4e;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;opacity:${currentPage === totalPages ? '.4' : '1'}">›</button>`;
+  html += `</div>`;
+
+  pagination.innerHTML = html;
+}
+
+function renderMobileCards(devis) {
+  var cardsEl = document.getElementById('qCards');
+  if (!cardsEl) return;
+
+  if (devis.length === 0) {
+    cardsEl.innerHTML = '<div style="text-align:center;padding:40px;color:#888">Aucun devis pour le moment</div>';
+    return;
+  }
+  cardsEl.innerHTML = '';
+  devis.forEach(function(d) {
+    var date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    var montant = (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA';
+    var entreprise = (d.companies && d.companies.name) ? d.companies.name : '—';
+    var clientName = (d.content && d.content.client_name) ? d.content.client_name : (d.client_name || '—');
+    var w = document.createElement('div');
+    w.className = 'swipe';
+    w.dataset.status = normalizeStatus(d.status);
+    w.dataset.co = d.company_id || '';
+    w.innerHTML =
+      '<div class="swipe-bg"><div class="side left"><i class="ic ic-sm" data-icon="download"></i>PDF</div><div class="side right"><i class="ic ic-sm" data-icon="trash"></i>Suppr.</div></div>' +
+      '<div class="swipe-front">' +
+        '<div class="top"><div><div class="client">' + clientName + '</div><div class="co">' + entreprise + ' · ' + (d.quote_number || '') + '</div></div>' + badge(d.status) + '</div>' +
+        '<div class="mid"><span class="amount num">' + montant + '</span><span class="date">' + date + '</span></div>' +
       '</div>';
-    c.appendChild(w);
-    var front=w.querySelector('.swipe-front');
-    front.addEventListener('click',function(){if(!w._moved)openPv(q);});
-    attachSwipe(w,front,q);
+    cardsEl.appendChild(w);
+    var front = w.querySelector('.swipe-front');
+    front.addEventListener('click', function() { if (!w._moved) voirDevis(d.id); });
+    attachSwipe(w, front, d);
   });
-  hydrateIcons(c);
-}
-function attachSwipe(wrap,front,q){
-  var x0=0,dx=0,active=false;
-  front.addEventListener('touchstart',function(e){x0=e.touches[0].clientX;active=true;wrap._moved=false;front.style.transition='none';},{passive:true});
-  front.addEventListener('touchmove',function(e){if(!active)return;dx=e.touches[0].clientX-x0;if(Math.abs(dx)>6)wrap._moved=true;front.style.transform='translateX('+Math.max(-140,Math.min(140,dx))+'px)';},{passive:true});
-  front.addEventListener('touchend',function(){active=false;front.style.transition='';
-    if(dx<-110){front.style.transform='translateX(-100%)';setTimeout(function(){if(confirm('Supprimer le devis '+q.n+' ?')){wrap.style.height=wrap.offsetHeight+'px';wrap.style.transition='.3s';requestAnimationFrame(function(){wrap.style.height='0';wrap.style.opacity='0';wrap.style.margin='0';});setTimeout(function(){wrap.remove();toast('Devis supprimé','trash');},320);}else{front.style.transform='';}},180);}
-    else if(dx>110){front.style.transform='';toast('Téléchargement du PDF','download');}
-    else{front.style.transform='';}
-    dx=0;
-  });
+  hydrateIcons(cardsEl);
 }
 
-/* filters */
-var curStatus='all';
-function filterStatus(el){document.querySelectorAll('#statusChips .chip').forEach(function(c){c.classList.remove('active');});el.classList.add('active');curStatus=el.dataset.f;applyFilters();}
-function applyFilters(){
-  var co=document.getElementById('coFilter').value;
-  function vis(el){var s=el.dataset.status,c=el.dataset.co;var ok=(curStatus==='all'||s===curStatus)&&(co==='all'||c===co);el.style.display=ok?'':'none';}
-  document.querySelectorAll('#qBody tr').forEach(vis);
-  document.querySelectorAll('#qCards .swipe').forEach(vis);
+/* --- Filtres --- */
+function filterStatus(el) {
+  document.querySelectorAll('#statusChips .chip').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  curStatus = el.dataset.f;
+  applyFilters();
 }
 
-/* preview */
-function openPv(q){
-  document.getElementById('pvNum').textContent=q.n;
-  document.getElementById('pvCo').textContent=({'Bâti Plus':'Bâti Plus Sénégal','Digital Sahel':'Digital Sahel'})[q.co]||q.co;
-  document.getElementById('pvAmount').textContent=fcfa(q.amount);
-  document.getElementById('pvClient').textContent=q.client;
-  document.getElementById('pvDate').textContent=q.date;
-  document.getElementById('pvStatus').innerHTML=badge(q.status);hydrateIcons(document.getElementById('pvStatus'));
+function applyFilters() {
+  var co = document.getElementById('filter-entreprise').value;
+  var filtered = allDevis.filter(function(d) {
+    var sMatch = curStatus === 'all' || normalizeStatus(d.status) === curStatus;
+    var cMatch = co === 'all' || d.company_id === co;
+    return sMatch && cMatch;
+  });
+  afficherDevis(filtered);
+}
+
+/* --- Aperçu --- */
+function voirDevis(id) {
+  var d = allDevis.find(function(q) { return q.id === id; });
+  if (!d) return;
+  currentPvId = id;
+  var date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  var montant = (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA';
+  var entreprise = (d.companies && d.companies.name) ? d.companies.name : '—';
+  var clientName = (d.content && d.content.client_name) ? d.content.client_name : (d.client_name || '—');
+
+  document.getElementById('pvNum').textContent = d.quote_number || '—';
+  document.getElementById('pvCo').textContent = entreprise;
+  document.getElementById('pvAmount').textContent = montant;
+  document.getElementById('pvClient').textContent = clientName;
+  document.getElementById('pvDate').textContent = date;
+  document.getElementById('pvStatus').innerHTML = badge(d.status);
+  hydrateIcons(document.getElementById('pvStatus'));
+
+  var prestations = (d.content && d.content.prestations) ? d.content.prestations : [];
+  var pvLines = prestations.slice(0, 4).map(function(p) {
+    return '<div class="pv-line"><span class="muted">' + (p.description || '') + '</span><span class="num">' + (p.total || 0).toLocaleString('fr-FR') + '</span></div>';
+  }).join('');
+  if (d.content && d.content.total_ht) {
+    pvLines += '<div class="pv-line"><span>Total HT</span><span class="num">' + d.content.total_ht.toLocaleString('fr-FR') + '</span></div>';
+  }
+  if (d.content && d.content.tva) {
+    pvLines += '<div class="pv-line"><span class="muted">TVA ' + (d.content.taux_tva || 19.25) + '%</span><span class="num">' + d.content.tva.toLocaleString('fr-FR') + '</span></div>';
+  }
+  var detailEl = document.querySelector('.pv-body > div:nth-child(3)');
+  if (detailEl) {
+    detailEl.innerHTML = '<div class="pv-cell" style="margin-bottom:6px"><div class="k">Détail</div></div>' + (pvLines || '<div class="pv-line"><span class="muted">—</span></div>');
+  }
+
   document.getElementById('pv').classList.add('open');
   document.getElementById('pvScrim').classList.add('open');
 }
-function closePv(){document.getElementById('pv').classList.remove('open');document.getElementById('pvScrim').classList.remove('open');}
-window.addEventListener('keydown',function(e){if(e.key==='Escape')closePv();});
 
-renderTable();renderCards();
+function closePv() {
+  document.getElementById('pv').classList.remove('open');
+  document.getElementById('pvScrim').classList.remove('open');
+  currentPvId = null;
+}
+
+/* --- Actions --- */
+function exporterDevisPDF(id) {
+  toast('Export PDF — bientôt disponible', 'download');
+}
+
+function dupliquerDevis(id) {
+  toast('Duplication — bientôt disponible', 'copy');
+}
+
+/* --- Swipe mobile --- */
+function attachSwipe(wrap, front, d) {
+  var x0 = 0, dx = 0, active = false;
+  front.addEventListener('touchstart', function(e) { x0 = e.touches[0].clientX; active = true; wrap._moved = false; front.style.transition = 'none'; }, { passive: true });
+  front.addEventListener('touchmove', function(e) { if (!active) return; dx = e.touches[0].clientX - x0; if (Math.abs(dx) > 6) wrap._moved = true; front.style.transform = 'translateX(' + Math.max(-140, Math.min(140, dx)) + 'px)'; }, { passive: true });
+  front.addEventListener('touchend', function() {
+    active = false; front.style.transition = '';
+    if (dx < -110) {
+      front.style.transform = '';
+    } else if (dx > 110) {
+      front.style.transform = '';
+      exporterDevisPDF(d.id);
+    } else {
+      front.style.transform = '';
+    }
+    dx = 0;
+  });
+}
+
+window.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePv(); });
+
+/* --- Init --- */
+document.addEventListener('DOMContentLoaded', async function() {
+  await checkAuth();
+  await chargerDevis();
+});
 </script>
 </body>
 </html>
