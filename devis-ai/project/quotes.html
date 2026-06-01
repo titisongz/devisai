@@ -1008,24 +1008,42 @@ async function exporterDevisPDF(id) {
   var d = allDevis.find(function(q) { return q.id === id; });
   if (!d) return;
 
-  var pv = document.getElementById('pv');
-  var pvWasOpen = pv.classList.contains('open');
   var prevDevis = currentDevis;
   var prevPvId = currentPvId;
 
-  // Remplir le DOM de l'off-canvas sans l'ouvrir
+  // Peupler l'off-canvas pour avoir le contenu à jour (met aussi currentDevis = d)
   _remplirOffcanvas(d);
 
-  // Rendre l'off-canvas capturable par html2canvas sans qu'il soit visible
-  pv.style.cssText = 'transition:none !important;transform:none !important;opacity:0 !important;pointer-events:none !important;';
+  // Cloner le contenu dans un div fantôme hors écran — le panneau .pv n'est jamais ouvert ni modifié
+  var source = document.querySelector('.offcanvas-content');
+  if (!source) return;
+
+  var ghost = document.createElement('div');
+  ghost.style.cssText = 'position:fixed;left:-9999px;top:0;width:440px;z-index:-1;pointer-events:none;';
+  ghost.appendChild(source.cloneNode(true));
+  document.body.appendChild(ghost);
+
   await new Promise(function(resolve) { requestAnimationFrame(function() { setTimeout(resolve, 80); }); });
 
-  // Générer le PDF (même logique que le bouton off-canvas, inclut marquerCommeEnvoye)
-  await exportDevisPDFFromOffcanvas();
+  try {
+    const canvas = await html2canvas(ghost.firstChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const ratio = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
+    pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width * ratio, canvas.height * ratio);
+    pdf.save((d.quote_number || 'devis') + '.pdf');
+    await marquerCommeEnvoye();
+  } catch (err) {
+    toast('Erreur export PDF : ' + err.message, 'x');
+  }
 
-  // Restaurer l'état de l'off-canvas
-  pv.style.cssText = '';
-  if (!pvWasOpen) {
+  document.body.removeChild(ghost);
+
+  // Restaurer l'état si le panneau était fermé avant l'export
+  if (!document.getElementById('pv').classList.contains('open')) {
     currentDevis = prevDevis;
     currentPvId = prevPvId;
   }
