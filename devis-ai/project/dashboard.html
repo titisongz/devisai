@@ -463,18 +463,18 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
         <div class="stats stagger" data-base="60" data-step="80">
           <div class="card stat hoverable">
             <div class="row1"><span class="label">Devis ce mois</span><span class="icon-chip"><i class="ic ic-sm" data-icon="file"></i></span></div>
-            <div class="val num stat-devis-mois">12</div>
-            <span class="delta"><i class="ic" data-icon="trend"></i> +33% vs mois dernier</span>
+            <div class="val num stat-devis-mois"><span class="skeleton" style="display:inline-block;width:50px;height:36px;vertical-align:middle;"></span></div>
+            <span class="delta stat-delta-devis"><span class="skeleton" style="display:inline-block;width:160px;height:14px;vertical-align:middle;border-radius:4px;"></span></span>
           </div>
           <div class="card stat hoverable">
             <div class="row1"><span class="label">Montant total</span><span class="icon-chip violet"><i class="ic ic-sm" data-icon="tag"></i></span></div>
-            <div class="val num stat-montant-total">8,4<small>M FCFA</small></div>
-            <span class="delta"><i class="ic" data-icon="trend"></i> +12% ce trimestre</span>
+            <div class="val num stat-montant-total"><span class="skeleton" style="display:inline-block;width:130px;height:36px;vertical-align:middle;"></span></div>
+            <span class="delta stat-delta-montant"><span class="skeleton" style="display:inline-block;width:160px;height:14px;vertical-align:middle;border-radius:4px;"></span></span>
           </div>
           <div class="card stat hoverable">
             <div class="row1"><span class="label">Entreprises configurées</span><span class="icon-chip blue"><i class="ic ic-sm" data-icon="building"></i></span></div>
-            <div class="val num stat-entreprises">2</div>
-            <span class="delta flat stat-noms-entreprises"><i class="ic" data-icon="check"></i> Bâti Plus &amp; Digital Sahel</span>
+            <div class="val num stat-entreprises"><span class="skeleton" style="display:inline-block;width:40px;height:36px;vertical-align:middle;"></span></div>
+            <span class="delta flat stat-noms-entreprises"><span class="skeleton" style="display:inline-block;width:180px;height:14px;vertical-align:middle;border-radius:4px;"></span></span>
           </div>
         </div>
 
@@ -659,46 +659,85 @@ async function loadDashboardStats() {
 
   const supabase = getSupabaseClient(token);
 
-  const { data: companies } = await supabase
-    .from('companies')
-    .select('id, name');
-
   const debutMois = new Date();
   debutMois.setDate(1);
   debutMois.setHours(0, 0, 0, 0);
 
-  const { data: devisMois } = await supabase
-    .from('quotes')
-    .select('id, total_amount')
-    .gte('created_at', debutMois.toISOString());
+  const debutMoisDernier = new Date(debutMois);
+  debutMoisDernier.setMonth(debutMoisDernier.getMonth() - 1);
 
-  const { data: tousLesDevis } = await supabase
-    .from('quotes')
-    .select('total_amount');
+  const [
+    { data: companies },
+    { data: devisMois },
+    { data: devisMoisDernier },
+    { data: tousLesDevis }
+  ] = await Promise.all([
+    supabase.from('companies').select('id, name'),
+    supabase.from('quotes').select('id, total_amount').gte('created_at', debutMois.toISOString()),
+    supabase.from('quotes').select('id, total_amount').gte('created_at', debutMoisDernier.toISOString()).lt('created_at', debutMois.toISOString()),
+    supabase.from('quotes').select('total_amount')
+  ]);
 
   const nbDevis = devisMois?.length || 0;
-  const montantTotal = tousLesDevis?.reduce((sum, q) => sum + (q.total_amount || 0), 0) || 0;
+  const nbDevisDernier = devisMoisDernier?.length || 0;
+  const montantMois = devisMois?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
+  const montantDernier = devisMoisDernier?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
+  const montantTotal = tousLesDevis?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
   const nbEntreprises = companies?.length || 0;
   const nomsEntreprises = companies?.map(c => c.name).join(' & ') || 'Aucune entreprise';
+
+  function calcDelta(actuel, precedent) {
+    if (precedent === 0) return actuel > 0 ? 100 : null;
+    return Math.round(((actuel - precedent) / precedent) * 100);
+  }
+
+  function formatDelta(delta, label) {
+    if (delta === null) return `<i class="ic" data-icon="trend"></i> Premier mois`;
+    const signe = delta >= 0 ? '+' : '';
+    const icone = delta >= 0 ? 'trend' : 'chevD';
+    const couleur = delta < 0 ? 'style="color:var(--danger)"' : '';
+    return `<i class="ic" data-icon="${icone}"></i><span ${couleur}>${signe}${delta}% ${label}</span>`;
+  }
+
+  function formatMontant(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + '<small>M FCFA</small>';
+    if (n >= 1_000) return Math.round(n / 1_000).toLocaleString('fr-FR') + '<small>K FCFA</small>';
+    return n.toLocaleString('fr-FR') + '<small> FCFA</small>';
+  }
 
   const statDevis = document.querySelector('.stat-devis-mois');
   if (statDevis) statDevis.textContent = nbDevis;
 
   const statMontant = document.querySelector('.stat-montant-total');
-  if (statMontant) statMontant.textContent = montantTotal.toLocaleString('fr-FR') + ' FCFA';
+  if (statMontant) statMontant.innerHTML = formatMontant(montantTotal);
 
   const statEntreprises = document.querySelector('.stat-entreprises');
   if (statEntreprises) statEntreprises.textContent = nbEntreprises;
 
   const nomEntreprises = document.querySelector('.stat-noms-entreprises');
-  if (nomEntreprises) nomEntreprises.innerHTML = '✓ ' + nomsEntreprises;
+  if (nomEntreprises) nomEntreprises.innerHTML = `<i class="ic" data-icon="check"></i> ${nomsEntreprises}`;
+
+  const deltaDevis = document.querySelector('.stat-delta-devis');
+  if (deltaDevis) {
+    deltaDevis.innerHTML = formatDelta(calcDelta(nbDevis, nbDevisDernier), 'vs mois dernier');
+    hydrateIcons(deltaDevis);
+  }
+
+  const deltaMontant = document.querySelector('.stat-delta-montant');
+  if (deltaMontant) {
+    deltaMontant.innerHTML = formatDelta(calcDelta(montantMois, montantDernier), 'vs mois dernier');
+    hydrateIcons(deltaMontant);
+  }
+
+  hydrateIcons(nomEntreprises);
 }
 
-document.querySelector('.stat-devis-mois').textContent = '...';
-document.querySelector('.stat-montant-total').textContent = '...';
-document.querySelector('.stat-entreprises').textContent = '...';
-document.querySelector('.stat-noms-entreprises').innerHTML = '...';
-document.querySelector('.derniers-devis-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#888;">Chargement...</td></tr>';
+document.querySelector('.derniers-devis-tbody').innerHTML = Array(3).fill(`
+  <tr>
+    <td colspan="7">
+      <span class="skeleton" style="display:block;height:18px;margin:6px 18px;border-radius:6px;"></span>
+    </td>
+  </tr>`).join('');
 
 loadDashboardStats();
 
@@ -718,7 +757,7 @@ async function loadDerniersDevis() {
   if (!tbody) return;
 
   if (!devis || devis.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">Aucun devis pour le moment</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: #888;">Aucun devis pour le moment</td></tr>';
     return;
   }
 
@@ -750,6 +789,7 @@ async function loadDerniersDevis() {
       <td>${d.client_name || '—'}</td>
       <td>${montant}</td>
       <td><span style="background:${couleur}22; color:${couleur}; padding: 4px 10px; border-radius: 20px; font-size: 12px;">${statusLabel}</span></td>
+      <td>${date}</td>
       <td><button style="background:none; border:none; color:#888; cursor:pointer;">↓</button></td>
     </tr>`;
   }).join('');
