@@ -437,6 +437,25 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
+<script>
+(function() {
+  const user = getUser();
+  if (user) {
+    const firstName = user.first_name || user.user_metadata?.full_name?.split(' ')[0] || '';
+    const lastName = user.last_name || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '';
+    const email = user.email || '';
+    const initiales = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase() || '--';
+    document.addEventListener('DOMContentLoaded', () => {
+      const nomEl = document.querySelector('.user-name');
+      const emailEl = document.querySelector('.user-email');
+      const initialesEl = document.querySelector('.user-initiales');
+      if (nomEl) nomEl.textContent = firstName + ' ' + lastName;
+      if (emailEl) emailEl.textContent = email;
+      if (initialesEl) initialesEl.textContent = initiales;
+    });
+  }
+})();
+</script>
 </head>
 <body>
 <div class="drawer-scrim"></div>
@@ -452,7 +471,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
       <a href="#" onclick="toast('Paramètres — bientôt disponible','settings')"><i class="ic" data-icon="settings"></i> Paramètres</a>
     </nav>
     <div class="sidebar-foot">
-      <div class="user-card"><span class="avatar">AD</span><div class="meta"><div class="nm">Amadou Diallo</div><div class="em">amadou@batiplus.sn</div></div><i class="ic ic-sm faint" data-icon="logout"></i></div>
+      <div class="user-card" onclick="logout()" title="Se déconnecter"><span class="avatar user-initiales">--</span><div class="meta"><div class="nm user-name"></div><div class="em user-email"></div></div><i class="ic ic-sm faint" data-icon="logout"></i></div>
     </div>
   </aside>
 
