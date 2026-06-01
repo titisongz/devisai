@@ -433,7 +433,7 @@ input:-webkit-autofill:active {
   <form class="form-grid stagger" data-base="80" data-step="55" onsubmit="handleSubmit(event)" autocomplete="off">
     <div class="field"><label for="cn">Nom de l'entreprise</label><input class="input" id="cn" placeholder="Ex : Bâti Plus Sénégal" value="Bâti Plus Sénégal" autocomplete="organization" required></div>
     <div class="field"><label for="ce">E-mail professionnel</label><div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="ce" type="email" placeholder="contact@entreprise.com" value="contact@batiplus.sn" autocomplete="organization-email"></div></div>
-    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><i class="ic" data-icon="phone"></i><input class="input" id="cp" type="tel" pattern="[6][0-9]{8}" maxlength="9" placeholder="+237 6XX XXX XXX" autocomplete="tel" required></div></div>
+    <div class="field"><label for="cp">Téléphone</label><div class="input-group"><span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;font-weight:600;pointer-events:none;user-select:none;z-index:1;white-space:nowrap;">+237</span><input class="input" id="cp" type="tel" maxlength="9" placeholder="696 766 522" autocomplete="tel" required style="padding-left:62px;"></div></div>
     <div class="field"><label for="cw">Site web <span class="opt">(optionnel)</span></label><div class="input-group"><i class="ic" data-icon="globe"></i><input class="input" id="cw" type="url" placeholder="www.entreprise.com" value="www.batiplus.sn" autocomplete="url"></div></div>
     <div class="field full"><label for="ca">Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="ca" placeholder="Rue, ville, pays" value="Rue 12 x Bd du Centenaire, Dakar, Sénégal" autocomplete="street-address" required></div></div>
 
@@ -675,12 +675,12 @@ async function handleSubmit(e) {
   }
 
   // Validation téléphone Cameroun (9 chiffres commençant par 6)
-  const telNettoye = telephone.replace(/[\s\-\+237]/g, '');
+  const telNettoye = telephone.replace(/[\s\-]/g, '');
   const telRegex = /^6[0-9]{8}$/;
   if (!telRegex.test(telNettoye)) {
     btn.disabled = false;
     btn.innerHTML = 'Enregistrer et continuer <i class="ic ic-sm" data-icon="arrowR"></i>';
-    alert('Veuillez entrer un numéro de téléphone camerounais valide (ex: 655 123 456).');
+    alert('Veuillez entrer un numéro valide à 9 chiffres (ex: 696 766 522).');
     return;
   }
 
@@ -769,7 +769,7 @@ async function handleSubmit(e) {
   const companyData = {
     name: document.getElementById('cn').value,
     email: document.getElementById('ce').value,
-    phone: document.getElementById('cp').value,
+    phone: '+237' + document.getElementById('cp').value.replace(/[\s\-]/g, ''),
     address: document.getElementById('ca').value,
     website: document.getElementById('cw')?.value || '',
     logo_url: logoBase64,
