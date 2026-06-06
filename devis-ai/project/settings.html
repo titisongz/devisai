@@ -283,24 +283,70 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
 <script src="js/auth.js"></script>
 <script>
 (function() {
-  const user = getUser();
-  if (user) {
-    const firstName = user.first_name || user.user_metadata?.full_name?.split(' ')[0] || '';
-    const lastName  = user.last_name  || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '';
-    const email     = user.email || '';
-    const initiales = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase() || '--';
-    document.addEventListener('DOMContentLoaded', function() {
-      var nomEl       = document.querySelector('.user-name');
-      var emailEl     = document.querySelector('.user-email');
-      var initialesEl = document.querySelectorAll('.user-initiales');
-      if (nomEl)   nomEl.textContent = firstName + ' ' + lastName;
-      if (emailEl) emailEl.textContent = email;
-      initialesEl.forEach(function(el) { el.textContent = initiales; });
-      document.getElementById('f-prenom').value  = firstName;
-      document.getElementById('f-nom').value     = lastName;
-      document.getElementById('f-email').value   = email;
-    });
-  }
+  document.addEventListener('DOMContentLoaded', async function() {
+    var user = getUser();
+    if (!user) return;
+
+    // Remplir depuis localStorage d'abord (affichage immédiat)
+    var firstName = user.first_name || user.user_metadata?.full_name?.split(' ')[0] || '';
+    var lastName  = user.last_name  || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '';
+    var email     = user.email || '';
+    var phone     = user.phone || '';
+
+    document.getElementById('f-prenom').value    = firstName;
+    document.getElementById('f-nom').value       = lastName;
+    document.getElementById('f-email').value     = email;
+    document.getElementById('f-telephone').value = phone;
+
+    // Mettre à jour header sidebar
+    var initiales = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || '--';
+    var fullName = (firstName + ' ' + lastName).trim() || 'Utilisateur';
+    document.querySelectorAll('.user-name').forEach(el => el.textContent = fullName);
+    document.querySelectorAll('.user-email').forEach(el => el.textContent = email);
+    document.querySelectorAll('.user-initiales').forEach(el => el.textContent = initiales);
+
+    // Puis charger depuis Supabase pour avoir les données fraîches
+    try {
+      var token = await getValidToken();
+      var userId = parseJwt(token).sub;
+      var { data, error } = await getSupabaseClient(token)
+        .from('profiles')
+        .select('first_name, last_name, full_name, email, phone, avatar_url')
+        .eq('id', userId)
+        .single();
+
+      if (!error && data) {
+        var fn = data.first_name || firstName;
+        var ln = data.last_name  || lastName;
+        var ph = data.phone      || phone;
+        var av = data.avatar_url || '';
+
+        document.getElementById('f-prenom').value    = fn;
+        document.getElementById('f-nom').value       = ln;
+        document.getElementById('f-telephone').value = ph;
+
+        // Mettre à jour photo de profil si elle existe
+        if (av) {
+          var avatarEl = document.getElementById('profile-avatar');
+          if (avatarEl) avatarEl.src = av;
+          var avatarPreview = document.getElementById('avatar-preview');
+          if (avatarPreview) {
+            avatarPreview.src = av;
+            avatarPreview.style.display = 'block';
+          }
+        }
+
+        // Synchroniser localStorage
+        user.first_name = fn;
+        user.last_name  = ln;
+        user.phone      = ph;
+        if (av) user.avatar_url = av;
+        localStorage.setItem('devisai_user', JSON.stringify(user));
+      }
+    } catch(e) {
+      console.warn('Chargement profil Supabase:', e.message);
+    }
+  });
 })();
 </script>
 </head>
@@ -958,16 +1004,49 @@ function rechercherReglage(query) {
 async function enregistrerProfil() {
   try {
     var token = await getValidToken();
-    if (!token) return;
     var prenom = document.getElementById('f-prenom').value.trim();
-    var nom    = document.getElementById('f-nom').value.trim();
-    var { error } = await getSupabaseClient(token).auth.updateUser({
+    var nom = document.getElementById('f-nom').value.trim();
+    var telephone = document.getElementById('f-telephone').value.trim();
+
+    // 1. Mettre à jour auth.users metadata
+    var { error: authError } = await getSupabaseClient(token).auth.updateUser({
       data: { first_name: prenom, last_name: nom, full_name: prenom + ' ' + nom }
     });
-    if (error) throw error;
+    if (authError) throw authError;
+
+    // 2. Mettre à jour la table profiles
+    var userId = parseJwt(token).sub;
+    var updateData = {
+      first_name: prenom,
+      last_name: nom,
+      full_name: prenom + ' ' + nom,
+      phone: telephone
+    };
+
+    // 3. Ajouter photo si uploadée
+    if (window.avatarBase64) {
+      updateData.avatar_url = window.avatarBase64;
+    }
+
+    var { error: profileError } = await getSupabaseClient(token)
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId);
+
+    if (profileError) throw profileError;
+
+    // 4. Mettre à jour le localStorage
+    var user = getUser();
+    user.first_name = prenom;
+    user.last_name = nom;
+    user.full_name = prenom + ' ' + nom;
+    user.phone = telephone;
+    if (window.avatarBase64) user.avatar_url = window.avatarBase64;
+    localStorage.setItem('devisai_user', JSON.stringify(user));
+
     toast('Profil mis à jour', 'check');
-  } catch(err) {
-    toast('Erreur : ' + err.message, 'x');
+  } catch(e) {
+    toast('Erreur : ' + e.message, 'x');
   }
 }
 
@@ -982,11 +1061,40 @@ function annulerProfil() {
 function changerAvatar(input) {
   var file = input.files[0];
   if (!file) return;
-  if (file.size > 1024 * 1024) { toast('Fichier trop lourd (max 1 Mo)', 'x'); return; }
-  toast('Photo mise à jour', 'check');
+  if (file.size > 1024 * 1024) {
+    toast('Fichier trop lourd (max 1 Mo)', 'x');
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result;
+    window.avatarBase64 = base64;
+
+    // Afficher la photo dans le cercle avatar
+    var avatarEl = document.querySelector('.profile-avatar-big');
+    if (avatarEl) {
+      avatarEl.style.backgroundImage = 'url(' + base64 + ')';
+      avatarEl.style.backgroundSize = 'cover';
+      avatarEl.style.backgroundPosition = 'center';
+      avatarEl.textContent = '';
+    }
+    toast('Photo chargée — cliquez sur Enregistrer pour sauvegarder', 'check');
+  };
+  reader.readAsDataURL(file);
 }
 
-function retirerPhoto() { toast('Photo retirée', 'check'); }
+function retirerPhoto() {
+  window.avatarBase64 = null;
+  var avatarEl = document.querySelector('.profile-avatar-big');
+  if (avatarEl) {
+    avatarEl.style.backgroundImage = '';
+    var user = getUser();
+    var firstName = user.first_name || '';
+    var lastName = user.last_name || '';
+    avatarEl.textContent = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || '--';
+  }
+  toast('Photo retirée — cliquez sur Enregistrer pour sauvegarder', 'check');
+}
 
 /* --- Préférences --- */
 function enregistrerPreferences() { toast('Préférences enregistrées', 'check'); }
