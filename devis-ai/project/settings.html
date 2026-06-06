@@ -72,6 +72,13 @@ textarea.input{height:auto;padding:13px 14px;resize:vertical;line-height:1.55}
   -webkit-text-fill-color: #ffffff !important;
   caret-color: #ffffff !important;
 }
+#f-fonction:-webkit-autofill,
+#f-fonction:-webkit-autofill:hover,
+#f-fonction:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #0d1117 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+}
 select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23ffffff80' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:40px;cursor:pointer}
 .input-group{position:relative}
 .input-group .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--faint);pointer-events:none}
@@ -304,6 +311,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
     document.getElementById('f-nom').value       = lastName;
     document.getElementById('f-email').value     = email;
     document.getElementById('f-telephone').value = phone;
+    document.getElementById('f-fonction').value = user.fonction || '';
 
     // Mettre à jour header sidebar
     var initiales = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || '--';
@@ -318,7 +326,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
       var userId = parseJwt(token).sub;
       var { data, error } = await getSupabaseClient(token)
         .from('profiles')
-        .select('first_name, last_name, full_name, email, phone, avatar_url')
+        .select('first_name, last_name, full_name, email, phone, avatar_url, fonction')
         .eq('id', userId)
         .single();
 
@@ -331,15 +339,16 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
         document.getElementById('f-prenom').value    = fn;
         document.getElementById('f-nom').value       = ln;
         document.getElementById('f-telephone').value = ph;
+        document.getElementById('f-fonction').value = data.fonction || '';
 
-        // Mettre à jour photo de profil si elle existe
+        // Afficher la photo si elle existe
         if (av) {
-          var avatarEl = document.getElementById('profile-avatar');
-          if (avatarEl) avatarEl.src = av;
-          var avatarPreview = document.getElementById('avatar-preview');
-          if (avatarPreview) {
-            avatarPreview.src = av;
-            avatarPreview.style.display = 'block';
+          var avatarEl = document.querySelector('.profile-avatar-big');
+          if (avatarEl) {
+            avatarEl.style.backgroundImage = 'url(' + av + ')';
+            avatarEl.style.backgroundSize = 'cover';
+            avatarEl.style.backgroundPosition = 'center';
+            avatarEl.textContent = '';
           }
         }
 
@@ -347,8 +356,12 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
         user.first_name = fn;
         user.last_name  = ln;
         user.phone      = ph;
+        user.fonction   = data.fonction || '';
         if (av) user.avatar_url = av;
         localStorage.setItem('devisai_user', JSON.stringify(user));
+
+        // Mettre à jour les champs
+        document.getElementById('f-fonction').value = data.fonction || '';
       }
     } catch(e) {
       console.warn('Chargement profil Supabase:', e.message);
@@ -1021,6 +1034,7 @@ async function enregistrerProfil() {
     var prenom = document.getElementById('f-prenom').value.trim();
     var nom = document.getElementById('f-nom').value.trim();
     var telephone = document.getElementById('f-telephone').value.trim();
+    var fonction = document.getElementById('f-fonction').value.trim();
 
     // 1. Mettre à jour auth.users metadata via le backend
     var backendUrl = window.BACKEND_URL || 'https://devisai-production.up.railway.app';
@@ -1043,7 +1057,8 @@ async function enregistrerProfil() {
       first_name: prenom,
       last_name: nom,
       full_name: prenom + ' ' + nom,
-      phone: telephone
+      phone: telephone,
+      fonction: fonction
     };
 
     // 3. Ajouter photo si uploadée
