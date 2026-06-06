@@ -128,4 +128,55 @@ router.post('/update-profile', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { new_password } = req.body;
+    const userId = req.user.id;
+
+    if (!new_password || new_password.length < 8) {
+      return res.status(400).json({ error: 'Mot de passe trop court (8 caractères minimum)' });
+    }
+
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+      password: new_password
+    });
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/signout-all', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { error } = await supabase.auth.admin.signOut(userId, 'global');
+    if (error) throw error;
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/delete-account', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Supprimer les données dans l'ordre (RLS)
+    await supabase.from('quotes').delete().eq('user_id', userId);
+    await supabase.from('companies').delete().eq('user_id', userId);
+    await supabase.from('profiles').delete().eq('id', userId);
+
+    // Supprimer le compte auth
+    const { error } = await supabase.auth.admin.deleteUser(userId);
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

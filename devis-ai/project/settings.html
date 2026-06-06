@@ -291,6 +291,58 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
 /* Sécurité */
 .danger-zone{border:1px solid rgba(239,93,111,.25);border-radius:var(--r-lg);padding:22px;background:rgba(239,93,111,.04)}
 .danger-zone-title{font-size:14px;font-weight:700;color:#ff9aa6;margin-bottom:12px}
+
+/* Modals */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active {
+  display: flex;
+}
+.modal-box {
+  background: #1a1a4e;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 420px;
+  margin: 1rem;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.modal-box h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+.btn-cancel {
+  flex: 1;
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+#btn-confirmer-suppression:not([disabled]) {
+  opacity: 1 !important;
+  cursor: pointer;
+}
+#btn-confirmer-suppression[disabled] {
+  opacity: 0.4 !important;
+  cursor: not-allowed;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
@@ -366,6 +418,9 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
     } catch(e) {
       console.warn('Chargement profil Supabase:', e.message);
     }
+
+    // Charger les sessions si on est sur l'onglet sécurité
+    chargerSessions();
   });
 })();
 </script>
@@ -753,21 +808,15 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
                 </div>
               </div>
 
-              <div class="s-card" style="margin-top:18px">
-                <div class="s-card-title">Sessions actives</div>
-                <div class="s-card-sub">Gérez les appareils connectés à votre compte.</div>
-                <div class="toggle-row" style="padding-top:0">
-                  <div class="toggle-info">
-                    <div class="t-label">Cet appareil</div>
-                    <div class="t-desc">Session active · Dernière activité : il y a quelques instants</div>
-                  </div>
-                  <span style="font-size:12px;color:var(--accent);font-weight:600;background:var(--accent-soft);padding:3px 10px;border-radius:99px;">Actuel</span>
+              <div class="settings-block">
+                <div class="block-title">Sessions actives</div>
+                <div class="block-desc">Appareils actuellement connectés à votre compte.</div>
+                <div id="sessions-list" style="margin:1rem 0;">
+                  <div style="color:rgba(255,255,255,0.4);font-size:0.88rem;">Chargement...</div>
                 </div>
-                <div class="s-card-foot">
-                  <button class="btn btn-danger" onclick="deconnecterTout()">
-                    <i class="ic ic-sm" data-icon="logout"></i> Déconnecter toutes les sessions
-                  </button>
-                </div>
+                <button class="btn-danger-outline" onclick="deconnecterTout()">
+                  Déconnecter tous les appareils
+                </button>
               </div>
 
               <div class="danger-zone" style="margin-top:18px">
@@ -1159,33 +1208,179 @@ function enregistrerApparence() { toast('Apparence enregistrée', 'check'); }
 
 /* --- Sécurité --- */
 async function changerMotDePasse() {
-  var actuel  = document.getElementById('s-actuel').value;
+  var actuel = document.getElementById('s-actuel').value;
   var nouveau = document.getElementById('s-nouveau').value;
   var confirm = document.getElementById('s-confirm').value;
-  if (!actuel || !nouveau) { toast('Remplissez tous les champs', 'x'); return; }
-  if (nouveau !== confirm) { toast('Les mots de passe ne correspondent pas', 'x'); return; }
-  if (nouveau.length < 8)  { toast('Minimum 8 caractères requis', 'x'); return; }
+
+  if (!actuel || !nouveau || !confirm) {
+    toast('Remplissez tous les champs', 'x'); return;
+  }
+  if (nouveau.length < 8) {
+    toast('Le nouveau mot de passe doit faire au moins 8 caractères', 'x'); return;
+  }
+  if (nouveau !== confirm) {
+    toast('Les mots de passe ne correspondent pas', 'x'); return;
+  }
+
+  var btn = document.querySelector('[onclick="changerMotDePasse()"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Vérification...'; }
+
   try {
+    var user = getUser();
+    var email = user.email;
+
+    // 1. Vérifier l'ancien mot de passe via reconnexion
+    var { error: signInError } = await getSupabaseClient().auth.signInWithPassword({
+      email: email,
+      password: actuel
+    });
+
+    if (signInError) {
+      toast('Mot de passe actuel incorrect', 'x');
+      if (btn) { btn.disabled = false; btn.textContent = 'Mettre à jour'; }
+      return;
+    }
+
+    // 2. Changer le mot de passe via le backend
     var token = await getValidToken();
-    if (!token) return;
-    var { error } = await getSupabaseClient(token).auth.updateUser({ password: nouveau });
-    if (error) throw error;
-    toast('Mot de passe mis à jour', 'check');
+    var backendUrl = window.BACKEND_URL || 'https://devisai-production.up.railway.app';
+    var resp = await fetch(backendUrl + '/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ new_password: nouveau })
+    });
+
+    if (!resp.ok) {
+      var err = await resp.json();
+      throw new Error(err.error || 'Erreur changement mot de passe');
+    }
+
+    // 3. Vider les champs
     document.getElementById('s-actuel').value = '';
     document.getElementById('s-nouveau').value = '';
     document.getElementById('s-confirm').value = '';
-  } catch(err) {
-    toast('Erreur : ' + err.message, 'x');
+
+    toast('Mot de passe mis à jour avec succès', 'check');
+  } catch(e) {
+    toast('Erreur : ' + e.message, 'x');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ic ic-sm" data-icon="lock"></i> Mettre à jour'; }
   }
 }
 
-function deconnecterTout() {
-  if (!confirm('Déconnecter toutes les sessions ?')) return;
-  logout();
+async function chargerSessions() {
+  var sessionsList = document.getElementById('sessions-list');
+  if (!sessionsList) return;
+
+  try {
+    var user = getUser();
+    var token = await getValidToken();
+    if (!token) return;
+
+    // Infos session actuelle
+    var payload = parseJwt(token);
+    var navigateur = navigator.userAgent;
+    var browserName = 'Navigateur inconnu';
+    if (navigateur.includes('Chrome')) browserName = 'Chrome';
+    else if (navigateur.includes('Firefox')) browserName = 'Firefox';
+    else if (navigateur.includes('Safari')) browserName = 'Safari';
+    else if (navigateur.includes('Edge')) browserName = 'Edge';
+
+    var os = 'Appareil inconnu';
+    if (navigateur.includes('iPhone') || navigateur.includes('iPad')) os = 'iOS';
+    else if (navigateur.includes('Android')) os = 'Android';
+    else if (navigateur.includes('Mac')) os = 'macOS';
+    else if (navigateur.includes('Windows')) os = 'Windows';
+    else if (navigateur.includes('Linux')) os = 'Linux';
+
+    var dateConnexion = payload.iat ? new Date(payload.iat * 1000).toLocaleDateString('fr-FR', {
+      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : 'Date inconnue';
+
+    sessionsList.innerHTML = `
+      <div style="display:flex;align-items:center;gap:1rem;padding:0.75rem;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:1.5rem;">💻</div>
+        <div style="flex:1;">
+          <div style="font-weight:500;font-size:0.92rem;">${os} — ${browserName}</div>
+          <div style="color:rgba(255,255,255,0.4);font-size:0.82rem;">Connecté le ${dateConnexion}</div>
+        </div>
+        <span style="background:rgba(46,204,113,0.15);color:#2ecc71;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.78rem;font-weight:500;">Actuel</span>
+      </div>
+    `;
+  } catch(e) {
+    sessionsList.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:0.88rem;">Impossible de charger les sessions.</div>';
+  }
+}
+
+async function deconnecterTout() {
+  var btn = document.querySelector('[onclick="deconnecterTout()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Déconnexion...'; }
+  try {
+    var token = await getValidToken();
+    var backendUrl = window.BACKEND_URL || 'https://devisai-production.up.railway.app';
+    await fetch(backendUrl + '/api/auth/signout-all', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    toast('Déconnecté de tous les appareils', 'check');
+    setTimeout(() => {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }, 1500);
+  } catch(e) {
+    toast('Erreur : ' + e.message, 'x');
+    if (btn) { btn.disabled = false; btn.textContent = 'Déconnecter tous les appareils'; }
+  }
 }
 
 function supprimerCompte() {
-  toast('Contactez le support pour supprimer votre compte', 'lock');
+  // Afficher la modal de confirmation
+  document.getElementById('modal-supprimer-compte').classList.add('active');
+  document.getElementById('confirm-text-1').value = '';
+  document.getElementById('confirm-text-2').value = '';
+  document.getElementById('btn-confirmer-suppression').disabled = true;
+}
+
+function fermerModalSuppression() {
+  document.getElementById('modal-supprimer-compte').classList.remove('active');
+}
+
+function verifierConfirmation() {
+  var text1 = document.getElementById('confirm-text-1').value;
+  var text2 = document.getElementById('confirm-text-2').value;
+  var ok = text1 === 'je confirme que je veux supprimer mon compte' &&
+           text2 === 'je supprime mon compte';
+  document.getElementById('btn-confirmer-suppression').disabled = !ok;
+}
+
+async function confirmerSuppression() {
+  var btn = document.getElementById('btn-confirmer-suppression');
+  btn.disabled = true;
+  btn.textContent = '⏳ Suppression...';
+  try {
+    var token = await getValidToken();
+    var backendUrl = window.BACKEND_URL || 'https://devisai-production.up.railway.app';
+    var resp = await fetch(backendUrl + '/api/auth/delete-account', {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!resp.ok) {
+      var err = await resp.json();
+      throw new Error(err.error || 'Erreur suppression compte');
+    }
+    toast('Compte supprimé. Au revoir !', 'check');
+    setTimeout(() => {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }, 2000);
+  } catch(e) {
+    toast('Erreur : ' + e.message, 'x');
+    btn.disabled = false;
+    btn.textContent = 'Supprimer définitivement';
+  }
 }
 
 /* --- Abonnement --- */
@@ -1193,5 +1388,43 @@ function upgraderPlan(plan) {
   toast('Fonctionnalité bientôt disponible', 'tag');
 }
 </script>
+<!-- Modal suppression compte -->
+<div class="modal-overlay" id="modal-supprimer-compte">
+  <div class="modal-box">
+    <h3 style="color:#e74c3c;">⚠️ Supprimer mon compte</h3>
+    <p style="color:rgba(255,255,255,0.6);font-size:0.88rem;margin:0.8rem 0 1.2rem;">
+      Cette action est irréversible. Toutes vos données (entreprises, devis, profil) seront définitivement supprimées.
+    </p>
+    <div class="form-group" style="margin-bottom:1rem;">
+      <label style="font-size:0.82rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;display:block;">
+        Tapez exactement : <strong style="color:#fff;">je confirme que je veux supprimer mon compte</strong>
+      </label>
+      <input type="text" id="confirm-text-1"
+        placeholder="je confirme que je veux supprimer mon compte"
+        oninput="verifierConfirmation()"
+        style="width:100%;padding:0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:0.88rem;font-family:'Inter',sans-serif;">
+    </div>
+    <div class="form-group" style="margin-bottom:1.5rem;">
+      <label style="font-size:0.82rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;display:block;">
+        Tapez exactement : <strong style="color:#fff;">je supprime mon compte</strong>
+      </label>
+      <input type="text" id="confirm-text-2"
+        placeholder="je supprime mon compte"
+        oninput="verifierConfirmation()"
+        style="width:100%;padding:0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:0.88rem;font-family:'Inter',sans-serif;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fermerModalSuppression()">Annuler</button>
+      <button id="btn-confirmer-suppression"
+        onclick="confirmerSuppression()"
+        disabled
+        style="flex:2;padding:0.75rem;background:#e74c3c;border:none;border-radius:10px;color:#fff;font-size:0.9rem;font-weight:600;cursor:pointer;opacity:0.4;font-family:'Inter',sans-serif;"
+        onmouseenter="if(!this.disabled)this.style.opacity='1'"
+        onmouseleave="if(!this.disabled)this.style.opacity='0.9'">
+        Supprimer définitivement
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
