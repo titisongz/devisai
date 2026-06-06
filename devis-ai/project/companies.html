@@ -485,8 +485,9 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
         <div class="field"><label>Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="company-address" placeholder="Rue, ville, pays"></div></div>
         <div class="field">
           <label>Logo</label>
-          <div class="dropzone" onclick="toast('Sélecteur de fichier — démo','image')"><i class="ic ic-lg" data-icon="upload"></i><div style="font-weight:600;color:var(--text)">Glissez votre logo ici</div><div class="hint">PNG, JPG ou SVG · 2 Mo max</div></div>
-          <img id="logo-preview" src="" style="display:none;">
+          <div class="dropzone" onclick="document.getElementById('logoFileInput').click()"><i class="ic ic-lg" data-icon="upload"></i><div style="font-weight:600;color:var(--text)">Glissez votre logo ici</div><div class="hint">PNG, JPG ou SVG · 2 Mo max</div></div>
+          <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/svg+xml" style="display:none">
+          <img id="logo-preview" src="" style="display:none;max-width:100%;max-height:80px;margin-top:0.5rem;border-radius:8px;">
         </div>
         <div class="field">
           <label>Couleur de la marque</label>
@@ -731,7 +732,7 @@ function sauvegarderEntreprise(e) {
     const address = document.getElementById('company-address')?.value?.trim();
     const website = document.getElementById('company-website')?.value?.trim();
     const brandColor = document.querySelector('.color-selected')?.dataset?.color || '#2ecc71';
-    const logoUrl = document.getElementById('logo-preview')?.src || '';
+    const logoUrl = window.logoBase64 || document.getElementById('logo-preview')?.src || '';
 
     if (!nom || !phone || !address) {
       alert('Veuillez remplir le nom, téléphone et adresse.');
@@ -819,6 +820,26 @@ document.querySelectorAll('#coModal .swatch').forEach(function(s) {
     document.querySelectorAll('#coModal .swatch').forEach(function(x){ x.classList.remove('sel','color-selected'); });
     s.classList.add('sel','color-selected');
   });
+});
+
+// Upload logo
+document.getElementById('logoFileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    toast('Image trop lourde (2 Mo max)', 'x');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const base64 = ev.target.result;
+    document.getElementById('logo-preview').src = base64;
+    document.getElementById('logo-preview').style.display = 'block';
+    // Stocker le base64 pour la sauvegarde
+    window.logoBase64 = base64;
+    toast('Logo chargé', 'check');
+  };
+  reader.readAsDataURL(file);
 });
 </script>
 </body>
