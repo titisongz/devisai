@@ -485,9 +485,11 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
         <div class="field"><label>Adresse complète</label><div class="input-group"><i class="ic" data-icon="pin"></i><input class="input" id="company-address" placeholder="Rue, ville, pays"></div></div>
         <div class="field">
           <label>Logo</label>
-          <div class="dropzone" onclick="document.getElementById('logoFileInput').click()"><i class="ic ic-lg" data-icon="upload"></i><div style="font-weight:600;color:var(--text)">Glissez votre logo ici</div><div class="hint">PNG, JPG ou SVG · 2 Mo max</div></div>
+          <div style="display:flex;align-items:center;gap:1rem;">
+            <div class="dropzone" onclick="document.getElementById('logoFileInput').click()" style="flex:1"><i class="ic ic-lg" data-icon="upload"></i><div style="font-weight:600;color:var(--text)">Glissez votre logo ici</div><div class="hint">PNG, JPG ou SVG · 2 Mo max</div></div>
+            <img id="logo-preview" src="" style="display:none;width:80px;height:80px;border-radius:8px;object-fit:contain;border:1px solid rgba(255,255,255,0.1);background:#fff;">
+          </div>
           <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/svg+xml" style="display:none">
-          <img id="logo-preview" src="" style="display:none;max-width:200px;max-height:80px;margin-top:0.5rem;border-radius:8px;object-fit:contain;">
         </div>
         <div class="field">
           <label>Couleur de la marque</label>
