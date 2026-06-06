@@ -411,6 +411,108 @@ input:-webkit-autofill:focus {
   .auth{grid-template-columns:1fr}
   .auth-aside{display:none}
 }
+/* Modal mot de passe oublié */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active {
+  display: flex;
+}
+.modal-box {
+  background: #1a1a4e;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 1rem;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.modal-box h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.modal-box p {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.88rem;
+  margin-bottom: 1.5rem;
+}
+.modal-box input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  caret-color: #ffffff;
+  margin-bottom: 1rem;
+}
+.modal-box input:focus {
+  outline: none;
+  border-color: #2ecc71;
+}
+.modal-box input:-webkit-autofill,
+.modal-box input:-webkit-autofill:hover,
+.modal-box input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #1a1a4e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.8rem;
+}
+.modal-actions .btn-cancel {
+  flex: 1;
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.modal-actions .btn-send {
+  flex: 2;
+  padding: 0.75rem;
+  background: #2ecc71;
+  border: none;
+  border-radius: 10px;
+  color: #0d0d2b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.modal-actions .btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.modal-success {
+  text-align: center;
+  padding: 1rem 0;
+}
+.modal-success .icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+.modal-success h4 {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+.modal-success p {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.88rem;
+  margin-bottom: 0;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
@@ -470,7 +572,7 @@ input:-webkit-autofill:focus {
           <div class="input-group"><i class="ic" data-icon="mail"></i><input class="input" id="email" type="email" placeholder="vous@entreprise.com" required></div>
         </div>
         <div class="field">
-          <div class="between"><label for="pw">Mot de passe</label><a class="link" href="#" onclick="handleForgotPassword(event)">Mot de passe oublié ?</a></div>
+          <div class="between"><label for="pw">Mot de passe</label><a class="link" href="#" onclick="openForgotModal(); return false;">Mot de passe oublié ?</a></div>
           <div style="position:relative;">
             <i class="ic" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--faint);pointer-events:none;" data-icon="lock"></i>
             <input class="input" id="pw" type="password" placeholder="••••••••" required style="padding-left:44px;padding-right:48px;width:100%;">
@@ -658,7 +760,7 @@ async function handleForgotPassword(e){
   }
   var client = getSupabaseClient();
   var { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/login.html'
+    redirectTo: 'https://devisai-ivory.vercel.app/reset-password.html'
   });
   if(error){
     toast('Erreur : ' + error.message, 'x');
@@ -702,6 +804,72 @@ function handleLogin(e){
     b.innerHTML = 'Se connecter';
     b.disabled = false;
   });
+}
+</script>
+
+<!-- Modal mot de passe oublié -->
+<div class="modal-overlay" id="forgotModal">
+  <div class="modal-box">
+    <div id="forgotForm">
+      <h3>Mot de passe oublié ?</h3>
+      <p>Entrez votre adresse email. Nous vous enverrons un lien pour réinitialiser votre mot de passe.</p>
+      <input type="email" id="forgotEmail" placeholder="votre@email.com" autocomplete="off">
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeForgotModal()">Annuler</button>
+        <button class="btn-send" id="btnSendReset" onclick="sendResetEmail()">Envoyer le lien</button>
+      </div>
+    </div>
+    <div id="forgotSuccess" class="modal-success" style="display:none">
+      <div class="icon">✉️</div>
+      <h4>Email envoyé !</h4>
+      <p>Vérifiez votre boîte mail et cliquez sur le lien pour créer un nouveau mot de passe.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function openForgotModal() {
+  document.getElementById('forgotEmail').value = '';
+  document.getElementById('forgotForm').style.display = 'block';
+  document.getElementById('forgotSuccess').style.display = 'none';
+  document.getElementById('forgotModal').classList.add('active');
+  setTimeout(() => document.getElementById('forgotEmail').focus(), 100);
+}
+
+function closeForgotModal() {
+  document.getElementById('forgotModal').classList.remove('active');
+}
+
+// Fermer en cliquant sur le fond
+document.getElementById('forgotModal').addEventListener('click', function(e) {
+  if (e.target === this) closeForgotModal();
+});
+
+async function sendResetEmail() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const btn = document.getElementById('btnSendReset');
+
+  if (!email) {
+    document.getElementById('forgotEmail').focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Envoi...';
+
+  const client = getSupabaseClient();
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://devisai-ivory.vercel.app/reset-password.html'
+  });
+
+  if (error) {
+    btn.disabled = false;
+    btn.textContent = 'Envoyer le lien';
+    alert('Erreur : ' + error.message);
+  } else {
+    document.getElementById('forgotForm').style.display = 'none';
+    document.getElementById('forgotSuccess').style.display = 'block';
+  }
 }
 </script>
 </body>
