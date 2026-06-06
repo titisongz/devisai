@@ -1334,6 +1334,24 @@ function buildShareData() {
   return { qn, objet, total, msg, shareUrl };
 }
 
+async function updateStatus(status) {
+  if (!generatedQuote?.id) return;
+  try {
+    var token = await getValidToken();
+    var backendUrl = window.BACKEND_URL || 'https://devisai-production.up.railway.app';
+    await fetch(backendUrl + '/api/quotes/' + generatedQuote.id, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ status: status })
+    });
+  } catch(e) {
+    console.warn('Mise à jour statut:', e.message);
+  }
+}
+
 function shareWhatsApp() {
   var d = buildShareData();
   if (!d.msg) { toast('Générez un devis d\'abord', 'x'); return; }
