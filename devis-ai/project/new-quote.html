@@ -1356,7 +1356,7 @@ function shareWhatsApp() {
   var d = buildShareData();
   if (!d.msg) { toast('Générez un devis d\'abord', 'x'); return; }
   var url = 'https://wa.me/?text=' + encodeURIComponent(d.msg);
-  window.open(url, '_blank');
+  window.location.href = url;
   updateStatus('envoyé');
 }
 
@@ -1364,7 +1364,7 @@ function shareTelegram() {
   var d = buildShareData();
   if (!d.msg) { toast('Générez un devis d\'abord', 'x'); return; }
   var url = 'https://t.me/share/url?url=' + encodeURIComponent(d.shareUrl) + '&text=' + encodeURIComponent(d.msg);
-  window.open(url, '_blank');
+  window.location.href = url;
   updateStatus('envoyé');
 }
 
