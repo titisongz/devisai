@@ -343,6 +343,42 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
   opacity: 0.4 !important;
   cursor: not-allowed;
 }
+
+/* Sécurité - Sessions */
+.settings-block {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 1.2rem;
+}
+.block-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 0.3rem;
+}
+.block-desc {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 0.8rem;
+}
+.btn-danger-outline {
+  padding: 0.65rem 1.2rem;
+  background: transparent;
+  border: 1px solid rgba(231,76,60,0.5);
+  border-radius: 10px;
+  color: #e74c3c;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+.btn-danger-outline:hover {
+  background: rgba(231,76,60,0.1);
+  border-color: #e74c3c;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
@@ -469,7 +505,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
       <div class="spacer"></div>
       <div class="search">
         <i class="ic ic-sm" data-icon="search"></i>
-        <input id="settingsSearch" placeholder="Rechercher un réglage..." oninput="rechercherReglage(this.value)">
+        <input id="settingsSearch" placeholder="Rechercher un réglage..." oninput="rechercherReglage(this.value)" autocomplete="off">
       </div>
     </header>
 
@@ -788,15 +824,15 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
                 <div class="fields-grid">
                   <div class="field full">
                     <label>Mot de passe actuel</label>
-                    <input class="input" id="s-actuel" type="password" placeholder="••••••••">
+                    <input class="input" id="s-actuel" type="password" placeholder="••••••••" autocomplete="current-password">
                   </div>
                   <div class="field">
                     <label>Nouveau mot de passe</label>
-                    <input class="input" id="s-nouveau" type="password" placeholder="••••••••">
+                    <input class="input" id="s-nouveau" type="password" placeholder="••••••••" autocomplete="new-password">
                   </div>
                   <div class="field">
                     <label>Confirmer le nouveau mot de passe</label>
-                    <input class="input" id="s-confirm" type="password" placeholder="••••••••">
+                    <input class="input" id="s-confirm" type="password" placeholder="••••••••" autocomplete="new-password">
                   </div>
                 </div>
 
