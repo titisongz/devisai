@@ -352,6 +352,9 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
   padding: 1.2rem 1.5rem;
   margin-bottom: 1.2rem;
 }
+.danger-zone {
+  margin-top: 1.2rem;
+}
 .block-title {
   font-size: 1rem;
   font-weight: 600;
@@ -379,6 +382,24 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
   background: rgba(231,76,60,0.1);
   border-color: #e74c3c;
 }
+#settingsSearch:-webkit-autofill,
+#settingsSearch:-webkit-autofill:hover,
+#settingsSearch:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #0d0d2b inset !important;
+  -webkit-text-fill-color: rgba(255,255,255,0.5) !important;
+}
+#s-actuel:-webkit-autofill,
+#s-actuel:-webkit-autofill:hover,
+#s-actuel:-webkit-autofill:focus,
+#s-nouveau:-webkit-autofill,
+#s-nouveau:-webkit-autofill:hover,
+#s-nouveau:-webkit-autofill:focus,
+#s-confirm:-webkit-autofill,
+#s-confirm:-webkit-autofill:hover,
+#s-confirm:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #0d1117 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
@@ -386,6 +407,12 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
 <script>
 (function() {
   document.addEventListener('DOMContentLoaded', async function() {
+    // Vider les champs sensibles au chargement pour bloquer l'autofill
+    document.getElementById('settingsSearch').value = '';
+    document.getElementById('s-actuel').value = '';
+    document.getElementById('s-nouveau').value = '';
+    document.getElementById('s-confirm').value = '';
+
     var user = getUser();
     if (!user) return;
 
@@ -855,7 +882,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
                 </button>
               </div>
 
-              <div class="danger-zone" style="margin-top:18px">
+              <div class="danger-zone">
                 <div class="danger-zone-title">Zone de danger</div>
                 <p style="font-size:13.5px;color:var(--muted);margin-bottom:16px">La suppression de votre compte est irréversible. Toutes vos données seront définitivement effacées.</p>
                 <button class="btn btn-danger btn-sm" onclick="supprimerCompte()">
