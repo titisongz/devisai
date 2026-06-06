@@ -1004,15 +1004,29 @@ function rechercherReglage(query) {
 async function enregistrerProfil() {
   try {
     var token = await getValidToken();
+    if (!token) {
+      toast('Session expirée — veuillez vous reconnecter', 'x');
+      setTimeout(() => window.location.href = 'login.html', 2000);
+      return;
+    }
     var prenom = document.getElementById('f-prenom').value.trim();
     var nom = document.getElementById('f-nom').value.trim();
     var telephone = document.getElementById('f-telephone').value.trim();
 
-    // 1. Mettre à jour auth.users metadata
-    var { error: authError } = await getSupabaseClient(token).auth.updateUser({
-      data: { first_name: prenom, last_name: nom, full_name: prenom + ' ' + nom }
+    // 1. Mettre à jour auth.users metadata via le backend
+    var backendUrl = window.BACKEND_URL || 'https://devisai-production.up.railway.app';
+    var resp = await fetch(backendUrl + '/api/auth/update-profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ first_name: prenom, last_name: nom })
     });
-    if (authError) throw authError;
+    if (!resp.ok) {
+      var errData = await resp.json();
+      throw new Error(errData.error || 'Erreur mise à jour profil');
+    }
 
     // 2. Mettre à jour la table profiles
     var userId = parseJwt(token).sub;

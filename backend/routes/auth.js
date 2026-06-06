@@ -101,4 +101,31 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/update-profile', authMiddleware, async (req, res) => {
+  try {
+    const { first_name, last_name } = req.body;
+    const userId = req.user.id;
+    const full_name = (first_name + ' ' + last_name).trim();
+
+    // Mettre à jour la table profiles
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ first_name, last_name, full_name })
+      .eq('id', userId);
+
+    if (profileError) throw profileError;
+
+    // Mettre à jour les metadata Supabase Auth
+    const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+      user_metadata: { first_name, last_name, full_name }
+    });
+
+    if (authError) throw authError;
+
+    res.json({ success: true, first_name, last_name, full_name });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

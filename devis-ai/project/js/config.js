@@ -9,3 +9,11 @@ function getSupabaseClient(token = null) {
   } : {};
   return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, options);
 }
+
+function parseJwt(token) {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch(e) {
+    return null;
+  }
+}
