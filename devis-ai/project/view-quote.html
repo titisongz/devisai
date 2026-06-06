@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Devis — DevisAI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header-bar {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .header-bar .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #2ecc71;
+    }
+    .header-bar p {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 0.3rem;
+    }
+    .devis-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .devis-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    .company-info h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+    .company-info p {
+      font-size: 0.85rem;
+      color: #666;
+      line-height: 1.6;
+    }
+    .company-logo {
+      max-height: 70px;
+      max-width: 150px;
+      object-fit: contain;
+    }
+    .devis-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .meta-block label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+    .meta-block p {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+    .devis-objet {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .devis-objet label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+    .devis-objet p {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+    }
+    thead th {
+      background: #f8f9fa;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+    }
+    thead th:last-child { text-align: right; }
+    tbody td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.9rem;
+    }
+    tbody td:last-child { text-align: right; font-weight: 500; }
+    .totals {
+      margin-left: auto;
+      max-width: 280px;
+      margin-bottom: 2rem;
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      font-size: 0.9rem;
+      color: #555;
+    }
+    .totals-row.total-ttc {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      border-top: 2px solid #f0f0f0;
+      padding-top: 0.8rem;
+      margin-top: 0.4rem;
+    }
+    .conditions {
+      font-size: 0.85rem;
+      color: #666;
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .status-brouillon { background: #f0f0f0; color: #666; }
+    .status-envoyé { background: #e3f2fd; color: #1976d2; }
+    .status-accepté { background: #e8f5e9; color: #2e7d32; }
+    .status-refusé { background: #ffebee; color: #c62828; }
+    .loading {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #666;
+    }
+    .error-msg {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #e74c3c;
+    }
+    .footer-note {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.82rem;
+      color: #999;
+    }
+    .footer-note a {
+      color: #2ecc71;
+      text-decoration: none;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-bar">
+      <div class="logo">DevisAI</div>
+      <p>Devis professionnel généré par IA</p>
+    </div>
+    <div id="content">
+      <div class="loading">⏳ Chargement du devis...</div>
+    </div>
+    <div class="footer-note">
+      Créez vos propres devis professionnels sur <a href="https://devisai-ivory.vercel.app">DevisAI</a>
+    </div>
+  </div>
+
+  <script>
+    async function loadQuote() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+
+      if (!token) {
+        document.getElementById('content').innerHTML = '<div class="error-msg">❌ Lien invalide.</div>';
+        return;
+      }
+
+      try {
+        const backendUrl = 'https://devisai-production.up.railway.app';
+        const resp = await fetch(backendUrl + '/api/quotes/public/' + token);
+
+        if (!resp.ok) {
+          document.getElementById('content').innerHTML = '<div class="error-msg">❌ Devis introuvable ou lien expiré.</div>';
+          return;
+        }
+
+        const { quote, company } = await resp.json();
+        const content = quote.content;
+
+        // Formatter le montant
+        const fmt = n => Number(n).toLocaleString('fr-FR') + ' FCFA';
+
+        // Construire le HTML du devis
+        var prestationsHtml = (content.prestations || []).map(p => `
+          <tr>
+            <td>
+              <div style="font-weight:500">${p.description}</div>
+              ${p.sous_detail ? '<div style="font-size:0.82rem;color:#999;margin-top:0.2rem">' + p.sous_detail + '</div>' : ''}
+            </td>
+            <td style="text-align:center">${p.quantite}</td>
+            <td style="text-align:right">${fmt(p.prix_unitaire)}</td>
+            <td>${fmt(p.total)}</td>
+          </tr>
+        `).join('');
+
+        var statusClass = 'status-' + (quote.status || 'brouillon');
+
+        document.getElementById('content').innerHTML = `
+          <div class="devis-card">
+            <div class="devis-header">
+              <div class="company-info">
+                <h2>${company?.name || 'Entreprise'}</h2>
+                <p>
+                  ${company?.email ? company.email + '<br>' : ''}
+                  ${company?.phone ? company.phone + '<br>' : ''}
+                  ${company?.address || ''}
+                </p>
+              </div>
+              ${company?.logo_url ? '<img class="company-logo" src="' + company.logo_url + '" alt="Logo">' : ''}
+            </div>
+
+            <div class="devis-meta">
+              <div class="meta-block">
+                <label>Numéro de devis</label>
+                <p>${quote.quote_number}</p>
+              </div>
+              <div class="meta-block">
+                <label>Statut</label>
+                <p><span class="status-badge ${statusClass}">${quote.status}</span></p>
+              </div>
+              <div class="meta-block">
+                <label>Client</label>
+                <p>${quote.client_name || content.client_name || '-'}</p>
+              </div>
+              <div class="meta-block">
+                <label>Date</label>
+                <p>${new Date(quote.created_at).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'})}</p>
+              </div>
+            </div>
+
+            <div class="devis-objet">
+              <label>Objet</label>
+              <p>${content.objet || '-'}</p>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Prestation</th>
+                  <th style="text-align:center">Qté</th>
+                  <th style="text-align:right">Prix unitaire</th>
+                  <th style="text-align:right">Total</th>
+                </tr>
+              </thead>
+              <tbody>${prestationsHtml}</tbody>
+            </table>
+
+            <div class="totals">
+              <div class="totals-row"><span>Sous-total HT</span><span>${fmt(content.total_ht)}</span></div>
+              <div class="totals-row"><span>TVA (${content.taux_taxe || 19.25}%)</span><span>${fmt(content.montant_taxe || content.tva)}</span></div>
+              <div class="totals-row total-ttc"><span>TOTAL TTC</span><span>${fmt(content.total_ttc)}</span></div>
+            </div>
+
+            <div class="conditions">
+              <strong>Conditions de paiement :</strong> ${content.conditions_paiement || '-'}<br>
+              <strong>Validité :</strong> ${content.validite_jours || 30} jours
+            </div>
+          </div>
+        `;
+      } catch(e) {
+        document.getElementById('content').innerHTML = '<div class="error-msg">❌ Erreur : ' + e.message + '</div>';
+      }
+    }
+
+    loadQuote();
+  </script>
+</body>
+</html>

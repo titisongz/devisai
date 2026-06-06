@@ -490,6 +490,8 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 .wave.on span:nth-child(2){animation-delay:.1s}.wave.on span:nth-child(3){animation-delay:.25s}.wave.on span:nth-child(4){animation-delay:.4s}.wave.on span:nth-child(5){animation-delay:.15s}.wave.on span:nth-child(6){animation-delay:.3s}.wave.on span:nth-child(7){animation-delay:.5s}
 
 .transcript{width:100%;min-height:120px;background:var(--field);border:1px solid var(--border-2);border-radius:var(--r);padding:16px 18px;font-size:15.5px;line-height:1.6;color:var(--text)}
+.transcript[contenteditable="true"]{border-color:var(--accent);outline:none;cursor:text;}
+.transcript[contenteditable="true"]:focus{box-shadow:0 0 0 3px rgba(46,204,113,0.15);}
 .transcript .ph{color:var(--ghost)}
 .transcript .cursor{display:inline-block;width:2px;height:1.1em;background:var(--accent);vertical-align:text-bottom;animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -1049,6 +1051,10 @@ function startRec(){
   recognition.continuous = true;
   recognition.interimResults = true;
   isRecording = true;
+  fullTranscript = '';
+  var transcriptEl = document.getElementById('transcript');
+  transcriptEl.contentEditable = 'false';
+  transcriptEl.innerHTML = '<span class="ph">La transcription apparaîtra ici en temps réel...</span>';
   var btn = document.getElementById('micBtn');
   var wave = document.getElementById('wave');
   var hint = document.getElementById('micHint');
@@ -1081,14 +1087,21 @@ function stopRec(){
   var hint = document.getElementById('micHint');
   btn.classList.add('idle'); btn.classList.remove('rec');
   wave.classList.remove('on');
-  hint.textContent = fullTranscript ? '✓ Transcription terminée — vous pouvez générer le devis' : 'Appuyez pour parler';
+  if (fullTranscript) {
+    var transcriptEl = document.getElementById('transcript');
+    transcriptEl.innerHTML = fullTranscript.trim();
+    transcriptEl.contentEditable = 'true';
+    hint.textContent = '✓ Transcription terminée — cliquez pour modifier, puis générez le devis';
+  } else {
+    hint.textContent = 'Appuyez pour parler';
+  }
 }
 
 async function generate(){
   var description = '';
   var activeMode = document.getElementById('tabVoice').classList.contains('active') ? 'voice' : 'text';
   if (activeMode === 'voice') {
-    description = fullTranscript.trim();
+    description = (document.getElementById('transcript').innerText || fullTranscript).trim();
   } else {
     description = (document.getElementById('brief').value || '').trim();
   }
@@ -1190,7 +1203,9 @@ function renderQuote(quote) {
 
   hydrateIcons();
 
-  var qrUrl = 'https://devisai-production.up.railway.app/api/quotes/' + quote.quote_number + '/share';
+  var qrUrl = generatedQuote?.share_token
+    ? 'https://devisai-ivory.vercel.app/view-quote.html?token=' + generatedQuote.share_token
+    : 'https://devisai-ivory.vercel.app';
   new QRCode(document.getElementById('qrcode-box'), {
     text: qrUrl,
     width: 96,
@@ -1304,37 +1319,47 @@ function syncQuoteData() {
 }
 
 function buildShareData() {
-  if (!generatedQuote) return null;
+  if (!generatedQuote) return {};
   var content = generatedQuote.content || {};
-  var co = window.selectedCompany || {};
-  var total_ttc = content.total_ttc || 0;
   var qn = generatedQuote.quote_number || '';
-  return {
-    qn: qn,
-    objet: content.objet || '',
-    total_ttc: total_ttc,
-    conditions: content.conditions_paiement || '',
-    company: co.name || '',
-    client_email: content.client_email || '',
-    msg: 'Bonjour, veuillez trouver ci-joint notre devis N° ' + qn + ' d\'un montant de ' + total_ttc.toLocaleString('fr-FR') + ' FCFA. Validité : 30 jours.'
-  };
+  var objet = content.objet || 'Devis professionnel';
+  var total = content.total_ttc ? Number(content.total_ttc).toLocaleString('fr-FR') + ' FCFA' : '';
+  var shareUrl = 'https://devisai-ivory.vercel.app/view-quote.html?token=' + (generatedQuote.share_token || '');
+  var msg = 'Bonjour,\n\nVeuillez trouver ci-dessous votre devis professionnel :\n\n'
+    + '📋 Référence : ' + qn + '\n'
+    + '📌 Objet : ' + objet + '\n'
+    + '💰 Montant TTC : ' + total + '\n\n'
+    + '🔗 Consulter le devis : ' + shareUrl + '\n\n'
+    + 'Cordialement';
+  return { qn, objet, total, msg, shareUrl };
 }
 
 function shareWhatsApp() {
-  var d = buildShareData(); if (!d) return;
-  window.open('https://wa.me/?text=' + encodeURIComponent(d.msg), '_blank');
+  var d = buildShareData();
+  if (!d.msg) { toast('Générez un devis d\'abord', 'x'); return; }
+  var url = 'https://wa.me/?text=' + encodeURIComponent(d.msg);
+  window.open(url, '_blank');
+  updateStatus('envoyé');
 }
 
 function shareTelegram() {
-  var d = buildShareData(); if (!d) return;
-  window.open('https://t.me/share/url?url=' + encodeURIComponent('https://devisai-production.up.railway.app') + '&text=' + encodeURIComponent(d.msg), '_blank');
+  var d = buildShareData();
+  if (!d.msg) { toast('Générez un devis d\'abord', 'x'); return; }
+  var url = 'https://t.me/share/url?url=' + encodeURIComponent(d.shareUrl) + '&text=' + encodeURIComponent(d.msg);
+  window.open(url, '_blank');
+  updateStatus('envoyé');
 }
 
 function shareEmail() {
-  var d = buildShareData(); if (!d) return;
-  var subject = 'Devis N° ' + d.qn + ' - ' + d.objet;
-  var body = 'Bonjour,\n\nVeuillez trouver ci-joint notre devis N° ' + d.qn + '.\n\nMontant : ' + d.total_ttc.toLocaleString('fr-FR') + ' FCFA\nValidité : 30 jours\nConditions : ' + d.conditions + '\n\nCordialement,\n' + d.company;
-  window.location.href = 'mailto:' + d.client_email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  var d = buildShareData();
+  if (!d.msg) { toast('Générez un devis d\'abord', 'x'); return; }
+  var content = generatedQuote?.content || {};
+  var clientEmail = generatedQuote?.client_email || content.client_email || '';
+  var subject = encodeURIComponent('Devis ' + d.qn + ' — ' + d.objet);
+  var body = encodeURIComponent(d.msg);
+  var mailto = 'mailto:' + clientEmail + '?subject=' + subject + '&body=' + body;
+  window.location.href = mailto;
+  updateStatus('envoyé');
 }
 
 async function sauvegarderDevis() {

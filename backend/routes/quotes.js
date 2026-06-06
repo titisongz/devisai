@@ -5,6 +5,34 @@ const authMiddleware = require('../middleware/auth');
 const Anthropic = require('@anthropic-ai/sdk');
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
+// Route publique - accès par share_token (sans authentification)
+router.get('/public/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const { data: quote, error } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('share_token', token)
+      .single();
+
+    if (error || !quote) {
+      return res.status(404).json({ error: 'Devis introuvable' });
+    }
+
+    // Récupérer les infos de l'entreprise
+    const { data: company } = await supabase
+      .from('companies')
+      .select('name, email, phone, address, logo_url, brand_color')
+      .eq('id', quote.company_id)
+      .single();
+
+    res.json({ quote, company: company || {} });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Toutes les routes sont protégées sauf /share
 router.use(authMiddleware);
 
@@ -128,6 +156,7 @@ IMPORTANT : Si budget = 500000 FCFA alors :
         quote_number: quoteNumber,
         content: quoteData,
         status: 'draft',
+        share_token: require('crypto').randomBytes(16).toString('hex'),
       })
       .select()
       .single();
