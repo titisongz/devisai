@@ -1101,16 +1101,22 @@ function partagerDevisOffcanvas() {
 function ouvrirWhatsapp() {
   var d = currentDevis;
   if (!d) return;
-  var message = encodeURIComponent('Bonjour, veuillez trouver notre devis N° ' + d.quote_number + ' d\'un montant de ' + (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA. Validité : 30 jours.');
-  window.location.href = 'https://wa.me/?text=' + message;
+  var text = 'Bonjour, veuillez trouver notre devis N° ' + d.quote_number + ' d\'un montant de ' + (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA. Validité : 30 jours.';
+  if (d.share_token) text += '\n\nhttps://devisai-ivory.vercel.app/view-quote.html?token=' + d.share_token;
+  window.location.href = 'https://wa.me/?text=' + encodeURIComponent(text);
   marquerCommeEnvoye();
 }
 
 function ouvrirTelegram() {
   var d = currentDevis;
   if (!d) return;
-  var message = encodeURIComponent('Bonjour, veuillez trouver notre devis N° ' + d.quote_number + ' d\'un montant de ' + (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA. Validité : 30 jours.');
-  window.location.href = 'https://t.me/share/url?text=' + message;
+  var text = encodeURIComponent('Bonjour, veuillez trouver notre devis N° ' + d.quote_number + ' d\'un montant de ' + (d.total_amount || 0).toLocaleString('fr-FR') + ' FCFA. Validité : 30 jours.');
+  if (d.share_token) {
+    var url = encodeURIComponent('https://devisai-ivory.vercel.app/view-quote.html?token=' + d.share_token);
+    window.location.href = 'https://t.me/share/url?url=' + url + '&text=' + text;
+  } else {
+    window.location.href = 'tg://msg?text=' + text;
+  }
   marquerCommeEnvoye();
 }
 
