@@ -1111,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var btn = document.querySelector('[data-tab="' + hash + '"]');
     if (btn) ouvrirTab(hash, btn);
   }
+  chargerNotifications();
 });
 
 function rechercherReglage(query) {
@@ -1252,7 +1253,27 @@ function retirerPhoto() {
 function enregistrerPreferences() { toast('Préférences enregistrées', 'check'); }
 
 /* --- Notifications --- */
-function enregistrerNotifications() { toast('Préférences de notifications enregistrées', 'check'); }
+function enregistrerNotifications() {
+  var prefs = {
+    cree: document.getElementById('n-cree').checked,
+    envoye: document.getElementById('n-envoye').checked,
+    archive: document.getElementById('n-archive').checked,
+    recap: document.getElementById('n-recap').checked,
+    news: document.getElementById('n-news').checked
+  };
+  localStorage.setItem('devisai_notif_prefs', JSON.stringify(prefs));
+  toast('Préférences de notifications enregistrées', 'check');
+}
+
+function chargerNotifications() {
+  var prefs = JSON.parse(localStorage.getItem('devisai_notif_prefs') || '{}');
+  if (Object.keys(prefs).length === 0) return; // garder les défauts HTML
+  document.getElementById('n-cree').checked    = prefs.cree    !== false;
+  document.getElementById('n-envoye').checked  = prefs.envoye  !== false;
+  document.getElementById('n-archive').checked = !!prefs.archive;
+  document.getElementById('n-recap').checked   = prefs.recap   !== false;
+  document.getElementById('n-news').checked    = prefs.news    !== false;
+}
 
 /* --- Apparence --- */
 function choisirTheme(el) {
