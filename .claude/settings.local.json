@@ -4,7 +4,9 @@
       "Bash(git rm *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git -C /Users/thierry/Desktop/devisai push origin main)",
+      "Bash(git -C /Users/thierry/Desktop/devisai config http.postBuffer 524288000)"
     ]
   }
 }
