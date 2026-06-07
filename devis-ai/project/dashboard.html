@@ -869,7 +869,7 @@ async function chargerNotifications() {
     // Charger les derniers devis
     var { data: quotes } = await client
       .from('quotes')
-      .select('id, quote_number, status, client_name, created_at, total_amount')
+      .select('id, quote_number, status, client_name, created_at, total_amount, content')
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -879,7 +879,7 @@ async function chargerNotifications() {
       quotes.forEach(q => {
         var date = new Date(q.created_at);
         var dateStr = date.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' });
-        var montant = Number(q.total_amount).toLocaleString('fr-FR') + ' FCFA';
+        var montant = Number(q.content?.total_ttc || q.total_amount || 0).toLocaleString('fr-FR') + ' FCFA';
 
         // Devis créé
         if (prefs.cree !== false && q.status === 'brouillon') {
