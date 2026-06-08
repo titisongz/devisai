@@ -106,3 +106,49 @@
     return u ? JSON.parse(u) : null;
   };
 })();
+
+// Appliquer les préférences d'apparence sur toutes les pages
+window.appliquerApparenceGlobale = function() {
+  var app = JSON.parse(localStorage.getItem('devisai_apparence') || '{}');
+  if (!app.theme && !app.color) return;
+
+  var root = document.documentElement;
+
+  // Thème
+  var theme = app.theme;
+  if (theme === 'system') {
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  if (theme === 'light') {
+    root.style.setProperty('--bg', '#f0f2f5');
+    root.style.setProperty('--bg2', '#ffffff');
+    root.style.setProperty('--card', '#ffffff');
+    root.style.setProperty('--text', '#1a1a2e');
+    root.style.setProperty('--text2', '#555577');
+    root.style.setProperty('--border', 'rgba(0,0,0,0.1)');
+  } else if (theme === 'dark') {
+    root.style.setProperty('--bg', '#0d0d2b');
+    root.style.setProperty('--bg2', '#050514');
+    root.style.setProperty('--card', '#1a1a4e');
+    root.style.setProperty('--text', '#ffffff');
+    root.style.setProperty('--text2', 'rgba(255,255,255,0.6)');
+    root.style.setProperty('--border', 'rgba(255,255,255,0.08)');
+  }
+
+  // Couleur d'accent
+  if (app.color) {
+    root.style.setProperty('--accent', app.color);
+    root.style.setProperty('--accent-hover', app.color + 'cc');
+  }
+
+  // Densité
+  if (app.densite) {
+    var padding = app.densite === 'compact' ? '0.4rem 0.8rem' : app.densite === 'spacieux' ? '1rem 1.5rem' : '0.7rem 1rem';
+    root.style.setProperty('--row-padding', padding);
+  }
+};
+
+// Appliquer immédiatement au chargement
+document.addEventListener('DOMContentLoaded', function() {
+  window.appliquerApparenceGlobale();
+});
