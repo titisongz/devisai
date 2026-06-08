@@ -1124,7 +1124,7 @@ async function generate(){
     var res = await fetch('https://devisai-production.up.railway.app/api/quotes/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ company_id: selectedCompanyId, description: description })
+      body: JSON.stringify({ company_id: selectedCompanyId, description: description, prefs: JSON.parse(localStorage.getItem('devisai_devis_prefs') || '{}') })
     });
     var result = await res.json();
     clearInterval(mi);

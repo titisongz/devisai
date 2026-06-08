@@ -75,6 +75,18 @@ router.post('/generate', async (req, res) => {
     return res.status(400).json({ error: 'company_id et description requis' });
   }
 
+  const prefs = req.body.prefs || {};
+  const devise = prefs.devise || 'XAF';
+  const tva = parseFloat(prefs.tva) || 19.25;
+  const validite = parseInt(prefs.validite) || 30;
+  const mentions = prefs.mentions || '';
+  const notes = prefs.notes || '';
+  const deviseLabel = {
+    'XAF': 'FCFA (XAF)', 'XOF': 'FCFA (XOF)', 'GNF': 'Franc Guinéen (GNF)',
+    'GHS': 'Cedi (GHS)', 'NGN': 'Naira (NGN)', 'MAD': 'Dirham (MAD)',
+    'USD': 'Dollar (USD)', 'EUR': 'Euro (EUR)'
+  }[devise] || devise;
+
   try {
     // Vérification que l'entreprise appartient au user
     const { data: company, error: companyError } = await supabase
@@ -95,9 +107,10 @@ router.post('/generate', async (req, res) => {
 
 Règles importantes :
 - Si un budget est mentionné, le total_ttc DOIT être égal à ce budget
-- La TVA au Cameroun est de 19,25%
-- Calcule total_ht = total_ttc / 1.1925 (arrondi)
-- Calcule tva = total_ttc - total_ht (arrondi)
+- La devise utilisée est : ${deviseLabel}
+- Le taux de TVA est de ${tva}%
+- Calcule total_ht = total_ttc / ${(1 + tva / 100).toFixed(4)} (arrondi)
+- Calcule montant_taxe = total_ttc - total_ht (arrondi)
 - Répartis les prestations de façon logique pour que leur somme = total_ht
 - Si pas de budget mentionné, estime un prix marché africain raisonnable
 - Analyse attentivement la description pour extraire :
@@ -121,19 +134,20 @@ Réponds UNIQUEMENT avec ce JSON, sans texte autour :
     }
   ],
   "total_ht": 000000,
-  "tva": 000000,
-  "taux_tva": 19.25,
+  "montant_taxe": 000000,
+  "devise": "${devise}",
+  "taux_tva": ${tva},
   "total_ttc": 000000,
   "conditions_paiement": "50% à la commande, 50% à la livraison",
   "delai_realisation": "X semaines",
-  "validite_jours": 30
+  "validite_jours": ${validite}${mentions ? ',\n  "mentions_legales": "..."' : ''}${notes ? ',\n  "note_bas_page": "..."' : ''}
 }
 
-IMPORTANT : Si budget = 500000 FCFA alors :
+IMPORTANT : Si budget = 500000 ${devise} alors :
 - total_ttc = 500000
-- total_ht = 419287 (arrondi de 500000/1.1925)
-- tva = 80713 (500000 - 419287)
-- La somme des prestations doit être égale à total_ht soit 419287`,
+- total_ht = arrondi de 500000 / ${(1 + tva / 100).toFixed(4)}
+- montant_taxe = total_ttc - total_ht
+- La somme des prestations doit être égale à total_ht`,
       messages: [{ role: 'user', content: description }]
     });
 

@@ -641,10 +641,27 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
                   <div class="field">
                     <label>Devise par défaut</label>
                     <select class="input" id="p-devise">
-                      <option value="XAF">FCFA (XAF)</option>
-                      <option value="EUR">Euro (EUR)</option>
-                      <option value="USD">Dollar US (USD)</option>
-                      <option value="GNF">Franc guinéen (GNF)</option>
+                      <optgroup label="Afrique Centrale">
+                        <option value="XAF">XAF — Franc CFA (BEAC) — Cameroun, Tchad, Congo, Gabon, RCA, Guinée Éq.</option>
+                      </optgroup>
+                      <optgroup label="Afrique de l'Ouest">
+                        <option value="XOF">XOF — Franc CFA (BCEAO) — Sénégal, Côte d'Ivoire, Mali, Burkina, Togo, Bénin, Niger, Guinée-Bissau</option>
+                        <option value="GNF">GNF — Franc Guinéen — Guinée</option>
+                        <option value="GMD">GMD — Dalasi — Gambie</option>
+                        <option value="SLL">SLL — Leone — Sierra Leone</option>
+                        <option value="LRD">LRD — Dollar Libérien — Liberia</option>
+                        <option value="GHS">GHS — Cedi — Ghana</option>
+                        <option value="NGN">NGN — Naira — Nigeria</option>
+                        <option value="MRU">MRU — Ouguiya — Mauritanie</option>
+                        <option value="CVE">CVE — Escudo — Cap-Vert</option>
+                      </optgroup>
+                      <optgroup label="Autres">
+                        <option value="MAD">MAD — Dirham — Maroc</option>
+                        <option value="TND">TND — Dinar — Tunisie</option>
+                        <option value="DZD">DZD — Dinar — Algérie</option>
+                        <option value="USD">USD — Dollar américain</option>
+                        <option value="EUR">EUR — Euro</option>
+                      </optgroup>
                     </select>
                   </div>
                   <div class="field">
@@ -1112,6 +1129,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btn) ouvrirTab(hash, btn);
   }
   chargerNotifications();
+  chargerPreferences();
 });
 
 function rechercherReglage(query) {
@@ -1250,7 +1268,28 @@ function retirerPhoto() {
 }
 
 /* --- Préférences --- */
-function enregistrerPreferences() { toast('Préférences enregistrées', 'check'); }
+function enregistrerPreferences() {
+  var prefs = {
+    devise: document.getElementById('p-devise').value,
+    tva: parseFloat(document.getElementById('p-tva').value) || 19.25,
+    validite: parseInt(document.getElementById('p-validite').value) || 30,
+    modele: document.getElementById('p-modele').value,
+    mentions: document.getElementById('p-mentions').value.trim(),
+    notes: document.getElementById('p-notes').value.trim()
+  };
+  localStorage.setItem('devisai_devis_prefs', JSON.stringify(prefs));
+  toast('Préférences enregistrées', 'check');
+}
+
+function chargerPreferences() {
+  var prefs = JSON.parse(localStorage.getItem('devisai_devis_prefs') || '{}');
+  if (prefs.devise) document.getElementById('p-devise').value = prefs.devise;
+  document.getElementById('p-tva').value = prefs.tva !== undefined ? prefs.tva : 19.25;
+  document.getElementById('p-validite').value = prefs.validite || 30;
+  if (prefs.modele) document.getElementById('p-modele').value = prefs.modele;
+  if (prefs.mentions) document.getElementById('p-mentions').value = prefs.mentions;
+  if (prefs.notes) document.getElementById('p-notes').value = prefs.notes;
+}
 
 /* --- Notifications --- */
 function enregistrerNotifications() {
