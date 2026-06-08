@@ -140,7 +140,7 @@ Réponds UNIQUEMENT avec ce JSON, sans texte autour :
   "total_ttc": 000000,
   "conditions_paiement": "50% à la commande, 50% à la livraison",
   "delai_realisation": "X semaines",
-  "validite_jours": ${validite}${mentions ? ',\n  "mentions_legales": "..."' : ''}${notes ? ',\n  "note_bas_page": "..."' : ''}
+  "validite_jours": ${validite}${mentions ? ',\n  "mentions_legales": "' + mentions + '"' : ''}${notes ? ',\n  "note_bas_page": "' + notes + '"' : ''}
 }
 
 IMPORTANT : Si budget = 500000 ${devise} alors :

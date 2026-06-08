@@ -858,7 +858,17 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
   window.closeModal=function(el){var m=el.closest?el.closest('.modal-scrim'):document.getElementById(el);if(m){m.classList.remove('open');document.body.style.overflow='';}};
 
   /* ---- format ---- */
-  window.fcfa=function(n){return new Intl.NumberFormat('fr-FR').format(n)+' FCFA';};
+  window.fcfa = function(n) {
+    var prefs = JSON.parse(localStorage.getItem('devisai_devis_prefs') || '{}');
+    var devise = prefs.devise || 'XAF';
+    var deviseLabel = {
+      'XAF': 'FCFA', 'XOF': 'FCFA', 'GNF': 'GNF', 'GHS': 'GHS',
+      'NGN': '₦', 'MAD': 'MAD', 'TND': 'TND', 'DZD': 'DZD',
+      'USD': '$', 'EUR': '€', 'GMD': 'GMD', 'SLL': 'SLL',
+      'LRD': 'LRD', 'MRU': 'MRU', 'CVE': 'CVE'
+    }[devise] || devise;
+    return new Intl.NumberFormat('fr-FR').format(n) + ' ' + deviseLabel;
+  };
 
   document.addEventListener('DOMContentLoaded',function(){
     hydrateIcons();
@@ -1184,9 +1194,9 @@ function renderQuote(quote) {
       </div>
       <table class="qd-table"><thead><tr><th>Description</th><th class="r">Qté</th><th class="r">Prix unitaire</th><th class="r">Total HT</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="quote-totals">
-        <div class="quote-total-row"><span>Total HT</span><span id="total-ht-display">${total_ht.toLocaleString('fr-FR')} FCFA</span></div>
-        <div class="quote-total-row"><span>TVA (${taux_tva}%)</span><span id="total-tva-display">${tva.toLocaleString('fr-FR')} FCFA</span></div>
-        <div class="quote-total-row total-ttc"><span>Total TTC</span><span id="total-ttc-display">${total_ttc.toLocaleString('fr-FR')} FCFA</span></div>
+        <div class="quote-total-row"><span>Total HT</span><span id="total-ht-display">${window.fcfa(total_ht)}</span></div>
+        <div class="quote-total-row"><span>TVA (${taux_tva}%)</span><span id="total-tva-display">${window.fcfa(tva)}</span></div>
+        <div class="quote-total-row total-ttc"><span>Total TTC</span><span id="total-ttc-display">${window.fcfa(total_ttc)}</span></div>
       </div>
       <div class="qd-foot">
         <div class="cond"><b>Conditions de paiement</b><span id="ed-conditions">${content.conditions_paiement || ''}</span></div>
@@ -1280,9 +1290,9 @@ function recalcTotals() {
   var htEl = document.getElementById('total-ht-display');
   var tvaEl = document.getElementById('total-tva-display');
   var ttcEl = document.getElementById('total-ttc-display');
-  if (htEl) htEl.textContent = ht.toLocaleString('fr-FR') + ' FCFA';
-  if (tvaEl) tvaEl.textContent = tva.toLocaleString('fr-FR') + ' FCFA';
-  if (ttcEl) ttcEl.textContent = ttc.toLocaleString('fr-FR') + ' FCFA';
+  if (htEl) htEl.textContent = window.fcfa(ht);
+  if (tvaEl) tvaEl.textContent = window.fcfa(tva);
+  if (ttcEl) ttcEl.textContent = window.fcfa(ttc);
 }
 
 function syncQuoteData() {
@@ -1323,7 +1333,7 @@ function buildShareData() {
   var content = generatedQuote.content || {};
   var qn = generatedQuote.quote_number || '';
   var objet = content.objet || 'Devis professionnel';
-  var total = content.total_ttc ? Number(content.total_ttc).toLocaleString('fr-FR') + ' FCFA' : '';
+  var total = content.total_ttc ? window.fcfa(Number(content.total_ttc)) : '';
   var shareUrl = 'https://devisai-ivory.vercel.app/view-quote.html?token=' + (generatedQuote.share_token || '');
   var msg = 'Bonjour,\n\nVeuillez trouver ci-dessous votre devis professionnel :\n\n'
     + '📋 Référence : ' + qn + '\n'
