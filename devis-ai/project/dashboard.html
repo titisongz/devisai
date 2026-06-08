@@ -445,7 +445,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <header class="topbar">
       <span class="page-title">Tableau de bord</span>
       <div class="spacer"></div>
-      <div class="search"><i class="ic ic-sm" data-icon="search"></i><input placeholder="Rechercher un devis, un client..."></div>
+      <div class="search"><i class="ic ic-sm" data-icon="search"></i><input id="dashSearch" placeholder="Rechercher un devis, un client..." oninput="rechercherDevis(this.value)" autocomplete="off"></div>
       <button class="iconbtn" aria-label="Notifications" id="btnNotif" onclick="toggleNotifPanel()"><i class="ic" data-icon="bell"></i><span class="badge-dot" id="notif-dot" style="display:none"></span></button>
       <a class="btn btn-primary" href="new-quote.html"><i class="ic ic-sm" data-icon="plus"></i> Nouveau devis</a>
     </header>
@@ -772,6 +772,9 @@ async function loadDerniersDevis() {
     .order('created_at', { ascending: false })
     .limit(5);
 
+  // Mettre en cache pour la recherche
+  tousLesDevis = devis || [];
+
   const tbody = document.querySelector('.derniers-devis-tbody');
   if (!tbody) return;
 
@@ -784,7 +787,7 @@ async function loadDerniersDevis() {
     .from('companies')
     .select('id, name');
 
-  const companiesMap = {};
+  companiesMap = {};
   companies?.forEach(c => companiesMap[c.id] = c.name);
 
   const statusColors = {
@@ -803,28 +806,80 @@ async function loadDerniersDevis() {
     'pending': 'En attente', 'en attente': 'En attente', 'attente': 'En attente'
   };
 
-  tbody.innerHTML = devis.map(d => {
-    const montantBrut = (!d.total_amount && d.content?.total_ttc) ? d.content.total_ttc : (d.total_amount || 0);
-    const date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-    const montant = montantBrut.toLocaleString('fr-FR') + ' FCFA';
-    const entreprise = companiesMap[d.company_id] || '—';
-    const clientName = d.content?.client_name || d.client_name || '—';
-    const statut = (d.status || '').toLowerCase();
-    const couleur = statusColors[statut] || '#888';
-    const statusLabel = statusLabels[statut] || (d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—');
-
-    return `<tr>
-      <td>${d.quote_number || '—'}</td>
-      <td>${entreprise}</td>
-      <td>${clientName}</td>
-      <td>${montant}</td>
-      <td><span style="background:${couleur}22; color:${couleur}; padding: 4px 10px; border-radius: 20px; font-size: 12px;">${statusLabel}</span></td>
-      <td>${date}</td>
-    </tr>`;
-  }).join('');
+  afficherDevis(devis);
 }
 
 loadDerniersDevis();
+
+var tousLesDevis = []; // cache des devis chargés
+
+var companiesMap = {};
+var statusColors = {
+  'brouillon': '#f39c12', 'draft': '#f39c12',
+  'envoyé': '#3498db', 'envoye': '#3498db',
+  'accepté': '#2ecc71', 'accepte': '#2ecc71',
+  'refusé': '#e74c3c', 'refuse': '#e74c3c',
+  'archivé': '#95a5a6', 'archive': '#95a5a6',
+  'en attente': '#9b59b6'
+};
+var statusLabels = {
+  'brouillon': 'Brouillon', 'draft': 'Brouillon',
+  'envoyé': 'Envoyé', 'envoye': 'Envoyé',
+  'accepté': 'Accepté', 'accepte': 'Accepté',
+  'refusé': 'Refusé', 'refuse': 'Refusé',
+  'archivé': 'Archivé', 'archive': 'Archivé',
+  'en attente': 'En attente'
+};
+
+function afficherDevis(devis) {
+  var tbody = document.querySelector('.derniers-devis-tbody');
+  if (!tbody) return;
+  if (!devis || devis.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:rgba(255,255,255,0.4);padding:2rem;">Aucun devis trouvé</td></tr>';
+    return;
+  }
+  tbody.innerHTML = devis.map(d => {
+    var montantBrut = (!d.total_amount && d.content?.total_ttc) ? d.content.total_ttc : (d.total_amount || 0);
+    var date = new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    var montant = Number(montantBrut).toLocaleString('fr-FR') + ' FCFA';
+    var entreprise = companiesMap[d.company_id] || '—';
+    var clientName = d.content?.client_name || d.client_name || '—';
+    var statut = (d.status || '').toLowerCase();
+    var couleur = statusColors[statut] || '#888';
+    var statusLabel = statusLabels[statut] || (d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—');
+    return '<tr>' +
+      '<td>' + (d.quote_number || '—') + '</td>' +
+      '<td>' + entreprise + '</td>' +
+      '<td>' + clientName + '</td>' +
+      '<td>' + montant + '</td>' +
+      '<td><span style="background:' + couleur + '22;color:' + couleur + ';padding:4px 10px;border-radius:20px;font-size:12px;">' + statusLabel + '</span></td>' +
+      '<td>' + date + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function rechercherDevis(query) {
+  var tbody = document.querySelector('.derniers-devis-tbody');
+  if (!tbody) return;
+
+  var q = query.toLowerCase().trim();
+
+  if (!q) {
+    // Afficher tous les devis
+    afficherDevis(tousLesDevis);
+    return;
+  }
+
+  // Filtrer
+  var filtres = tousLesDevis.filter(function(d) {
+    var num = (d.quote_number || '').toLowerCase();
+    var client = (d.client_name || d.content?.client_name || '').toLowerCase();
+    var montant = String(d.content?.total_ttc || d.total_amount || '');
+    return num.includes(q) || client.includes(q) || montant.includes(q);
+  });
+
+  afficherDevis(filtres);
+}
 
 </script>
 
