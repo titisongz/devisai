@@ -106,3 +106,21 @@
     return u ? JSON.parse(u) : null;
   };
 })();
+
+// Badge forfait sidebar (toutes les pages)
+document.addEventListener('DOMContentLoaded', function() {
+  var forfait = localStorage.getItem('devisai_forfait') || 'freemium';
+  var labels = { freemium: 'Freemium', pro: 'Pro', proplus: 'Pro+' };
+
+  // Remplacer .user-email par badge forfait sur toutes les pages
+  document.querySelectorAll('.user-email').forEach(function(el) {
+    el.className = 'em user-forfait';
+    el.innerHTML = '<span class="badge-forfait ' + forfait + '">' + (labels[forfait] || 'Freemium') + '</span>';
+  });
+
+  // Mettre à jour si déjà remplacé (ex: settings.html)
+  document.querySelectorAll('.user-forfait .badge-forfait').forEach(function(el) {
+    el.className = 'badge-forfait ' + forfait;
+    el.textContent = labels[forfait] || 'Freemium';
+  });
+});

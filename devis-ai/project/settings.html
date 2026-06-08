@@ -400,6 +400,26 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
   -webkit-box-shadow: 0 0 0 30px #0d1117 inset !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+.badge-forfait {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.badge-forfait.freemium {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+}
+.badge-forfait.pro {
+  background: rgba(52,152,219,0.2);
+  color: #3498db;
+}
+.badge-forfait.proplus {
+  background: rgba(46,204,113,0.2);
+  color: #2ecc71;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
@@ -432,8 +452,16 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
     var initiales = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || '--';
     var fullName = (firstName + ' ' + lastName).trim() || 'Utilisateur';
     document.querySelectorAll('.user-name').forEach(el => el.textContent = fullName);
-    document.querySelectorAll('.user-email').forEach(el => el.textContent = email);
     document.querySelectorAll('.user-initiales').forEach(el => el.textContent = initiales);
+
+    // Badge forfait dans la sidebar
+    var forfait = localStorage.getItem('devisai_forfait') || 'freemium';
+    var badgeEl = document.querySelector('.user-forfait .badge-forfait');
+    if (badgeEl) {
+      var labels = { freemium: 'Freemium', pro: 'Pro', proplus: 'Pro+' };
+      badgeEl.className = 'badge-forfait ' + forfait;
+      badgeEl.textContent = labels[forfait] || 'Freemium';
+    }
 
     // Puis charger depuis Supabase pour avoir les données fraîches
     try {
@@ -511,7 +539,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
         <span class="avatar user-initiales">--</span>
         <div class="meta">
           <div class="nm user-name"></div>
-          <div class="em user-email"></div>
+          <div class="em user-forfait"><span class="badge-forfait freemium">Freemium</span></div>
         </div>
         <i class="ic ic-sm faint" data-icon="logout"></i>
       </div>
@@ -928,88 +956,58 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
                 <div class="plans-grid">
 
                   <!-- Freemium -->
-                  <div class="plan-card">
+                  <div class="plan-card" id="plan-freemium">
                     <div class="plan-name">Freemium</div>
                     <div class="plan-price">
                       <span class="amount">0</span>
                       <span class="period">FCFA</span>
                     </div>
-                    <div class="plan-desc">Jusqu'à 10 devis gratuits par mois</div>
+                    <div class="plan-desc">5 devis gratuits par mois, renouvelés le 1er de chaque mois</div>
                     <div class="plan-features">
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> 10 devis/mois
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> 1 entreprise
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Export PDF
-                      </div>
-                      <div class="plan-feature locked">
-                        <i class="ic" data-icon="lock"></i> Devis illimités
-                      </div>
-                      <div class="plan-feature locked">
-                        <i class="ic" data-icon="lock"></i> Statistiques avancées
-                      </div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> 5 devis/mois</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> 1 entreprise</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> Export PDF</div>
+                      <div class="plan-feature locked"><i class="ic" data-icon="lock"></i> Devis illimités</div>
+                      <div class="plan-feature locked"><i class="ic" data-icon="lock"></i> Statistiques avancées</div>
                     </div>
                     <button class="plan-cta active-plan" disabled>Plan actuel</button>
                   </div>
 
                   <!-- Pro -->
-                  <div class="plan-card">
+                  <div class="plan-card" id="plan-pro">
                     <div class="plan-name">Pro</div>
                     <div class="plan-price">
-                      <span class="amount">4 999</span>
-                      <span class="period">FCFA/mois</span>
+                      <span class="amount">999</span>
+                      <span class="period">FCFA / 10 devis</span>
                     </div>
-                    <div class="plan-desc">Pour les indépendants et PME en croissance</div>
+                    <div class="plan-desc">Achetez des blocs de 10 devis à la demande</div>
                     <div class="plan-features">
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Devis illimités
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Entreprises illimitées
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Export PDF & partage
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Statistiques avancées
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Support prioritaire
-                      </div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> 10 devis par achat</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> Entreprises illimitées</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> Export PDF & partage</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> QR code & lien public</div>
+                      <div class="plan-feature locked"><i class="ic" data-icon="lock"></i> Devis illimités</div>
                     </div>
-                    <button class="plan-cta" onclick="upgraderPlan('pro')">Passer à Pro</button>
+                    <button class="plan-cta" onclick="upgraderPlan('pro')">Acheter 10 devis</button>
                   </div>
 
                   <!-- Pro Plus -->
-                  <div class="plan-card featured">
-                    <div class="plan-badge">Populaire</div>
-                    <div class="plan-name">Pro Plus</div>
+                  <div class="plan-card featured" id="plan-proplus">
+                    <div class="plan-badge">Meilleur rapport</div>
+                    <div class="plan-name">Pro+</div>
                     <div class="plan-price">
-                      <span class="amount">9 999</span>
+                      <span class="amount">19 999</span>
                       <span class="period">FCFA/an</span>
                     </div>
-                    <div class="plan-desc">Tout le Pro, avec 2 mois offerts</div>
+                    <div class="plan-desc">Devis illimités toute l'année</div>
                     <div class="plan-features">
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Tout ce qui est inclus dans Pro
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> 2 mois offerts (vs mensuel)
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Modèles personnalisés
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Multi-utilisateurs (bientôt)
-                      </div>
-                      <div class="plan-feature">
-                        <i class="ic" data-icon="check"></i> Support dédié
-                      </div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> Devis illimités</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> Entreprises illimitées</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> Export PDF & partage</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> QR code & lien public</div>
+                      <div class="plan-feature"><i class="ic" data-icon="check"></i> Support prioritaire</div>
                     </div>
-                    <button class="plan-cta cta-primary" onclick="upgraderPlan('pro-plus')">Choisir Pro Plus</button>
+                    <button class="plan-cta cta-primary" onclick="upgraderPlan('pro-plus')">Choisir Pro+</button>
                   </div>
 
                 </div>
@@ -1130,6 +1128,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   chargerNotifications();
   chargerPreferences();
+  chargerUtilisation();
 });
 
 function rechercherReglage(query) {
@@ -1507,8 +1506,51 @@ async function confirmerSuppression() {
 }
 
 /* --- Abonnement --- */
+async function chargerUtilisation() {
+  try {
+    var token = await getValidToken();
+    if (!token) return;
+    var client = getSupabaseClient(token);
+
+    // Compter les devis du mois en cours
+    var debut = new Date();
+    debut.setDate(1);
+    debut.setHours(0, 0, 0, 0);
+
+    var { count } = await client
+      .from('quotes')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', debut.toISOString());
+
+    var utilises = count || 0;
+    var limite = 5;
+    var restants = Math.max(0, limite - utilises);
+    var pct = Math.min(100, Math.round((utilises / limite) * 100));
+
+    document.getElementById('usage-label').textContent = utilises + ' devis sur ' + limite;
+    document.getElementById('usage-bar-fill').style.width = pct + '%';
+    document.getElementById('usage-bar-fill').style.background = pct >= 100 ? '#e74c3c' : pct >= 80 ? '#f39c12' : '#2ecc71';
+
+    var msgEl = document.querySelector('#tab-abonnement .s-card p');
+    if (msgEl) {
+      if (restants === 0) {
+        msgEl.innerHTML = '⚠️ Vous avez atteint votre limite mensuelle. <strong style="color:#e74c3c">Passez à Pro pour continuer.</strong>';
+      } else {
+        msgEl.innerHTML = 'Il vous reste <strong style="color:var(--text)">' + restants + ' devis</strong> gratuits ce mois-ci. Passez à Pro pour ne plus avoir de limite.';
+      }
+    }
+
+    // Mettre à jour le pourcentage affiché
+    var pctEl = document.querySelector('.usage-row span:last-child');
+    if (pctEl) pctEl.textContent = pct + '%';
+
+  } catch(e) {
+    console.warn('Erreur chargement utilisation:', e.message);
+  }
+}
+
 function upgraderPlan(plan) {
-  toast('Fonctionnalité bientôt disponible', 'tag');
+  toast('Paiement bientôt disponible — Orange Money & MTN Mobile Money', 'tag');
 }
 </script>
 <!-- Modal suppression compte -->

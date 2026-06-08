@@ -6,7 +6,11 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(git -C /Users/thierry/Desktop/devisai push origin main)",
-      "Bash(git -C /Users/thierry/Desktop/devisai config http.postBuffer 524288000)"
+      "Bash(git -C /Users/thierry/Desktop/devisai config http.postBuffer 524288000)",
+      "Bash(git -C /Users/thierry/Desktop/devisai status)",
+      "Bash(git -C /Users/thierry/Desktop/devisai diff)",
+      "Bash(git -C /Users/thierry/Desktop/devisai add devis-ai/project/settings.html devis-ai/project/js/auth.js)",
+      "Bash(git -C /Users/thierry/Desktop/devisai commit -m ' *)"
     ]
   }
 }
