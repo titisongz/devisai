@@ -1512,15 +1512,19 @@ async function chargerUtilisation() {
     if (!token) return;
     var client = getSupabaseClient(token);
 
-    // Compter les devis du mois en cours
-    var debut = new Date();
-    debut.setDate(1);
-    debut.setHours(0, 0, 0, 0);
+    var userId = parseJwt(token)?.sub;
 
-    var { count } = await client
+    // Premier jour du mois en UTC
+    var now = new Date();
+    var debut = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+
+    var { count, error } = await client
       .from('quotes')
       .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
       .gte('created_at', debut.toISOString());
+
+    console.log('Devis ce mois:', count, 'Erreur:', error);
 
     var utilises = count || 0;
     var limite = 5;
