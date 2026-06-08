@@ -488,7 +488,7 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
     <header class="topbar">
       <span class="page-title">Mes devis</span>
       <div class="spacer"></div>
-      <div class="search"><i class="ic ic-sm" data-icon="search"></i><input placeholder="Rechercher..."></div>
+      <div class="search"><i class="ic ic-sm" data-icon="search"></i><input id="quotesSearch" placeholder="Rechercher un devis, un client..." oninput="rechercherDevis(this.value)" autocomplete="off"></div>
       <a class="btn btn-primary" href="new-quote.html"><i class="ic ic-sm" data-icon="plus"></i> Nouveau devis</a>
     </header>
 
@@ -1193,6 +1193,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(function() { voirDevisById(voirId); }, 500);
   }
 });
+
+function rechercherDevis(query) {
+  var q = query.toLowerCase().trim();
+  if (!q) {
+    afficherDevis(allDevis);
+    return;
+  }
+  var filtres = allDevis.filter(function(d) {
+    var num = (d.quote_number || '').toLowerCase();
+    var client = (d.client_name || d.content?.client_name || '').toLowerCase();
+    var montant = String(d.content?.total_ttc || d.total_amount || '');
+    var statut = (d.status || '').toLowerCase();
+    return num.includes(q) || client.includes(q) || montant.includes(q) || statut.includes(q);
+  });
+  afficherDevis(filtres);
+}
 </script>
 </body>
 </html>
