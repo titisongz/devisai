@@ -900,7 +900,7 @@ async function chargerNotifications() {
           });
         }
         // Devis archivé
-        if (prefs.archive && q.status === 'archivé') {
+        if (prefs.archive && (q.status === 'archivé' || q.status === 'archive')) {
           notifications.push({
             icon: '🗄️', color: '#95a5a6',
             titre: 'Devis archivé',
