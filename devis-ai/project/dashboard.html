@@ -901,10 +901,11 @@ async function chargerNotifications() {
         }
         // Devis archivé
         if (prefs.archive && (q.status === 'archivé' || q.status === 'archive')) {
+          var clientArchive = q.client_name || q.content?.client_name || 'Client';
           notifications.push({
             icon: '🗄️', color: '#95a5a6',
             titre: 'Devis archivé',
-            msg: q.quote_number + ' — ' + (q.client_name || 'Client'),
+            msg: q.quote_number + ' — ' + clientArchive,
             date: dateStr
           });
         }
