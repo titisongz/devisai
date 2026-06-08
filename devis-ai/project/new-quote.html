@@ -557,6 +557,44 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
   .content{padding-bottom:calc(var(--bottomnav-h) + 80px)}
   .qd-meta{text-align:left}
 }
+@media (max-width:768px){
+  .nq-wrap{padding:0}
+  .companies-grid{grid-template-columns:1fr!important}
+  .stepper{gap:4px;margin-bottom:20px}
+  .stepper .st{font-size:12px;font-weight:600}
+  .stepper .st .n{width:26px;height:26px;font-size:12px}
+  .stepper .line{min-width:8px}
+  .step-title{font-size:18px;font-weight:700}
+  .step-sub{font-size:13px}
+  .qd-head{flex-direction:column;gap:14px}
+  .qd-meta{text-align:left}
+  .qd-co .nm{font-size:15px;font-weight:700}
+  .qd-co .sm{font-size:12px}
+  .qd-client{flex-direction:column;gap:12px}
+  .qd-totals,.quote-totals{max-width:100%;width:100%}
+  .qd-foot{flex-direction:column;gap:16px}
+  .qd-in{padding:18px 14px}
+  .mode-tabs{width:100%}
+}
+@media (max-width:480px){
+  .mode-tabs{justify-content:stretch}
+  .mode-tabs button{flex:1;height:34px;font-size:13px;font-weight:600;padding:0 10px}
+  .mic-big{width:90px;height:90px}
+  .mic-big .ic{width:36px;height:36px}
+  .mic-hint{font-size:13px}
+  .transcript{font-size:14px;min-height:90px}
+  .qd-table{font-size:12px}
+  .qd-table th{font-size:10px;padding:8px 6px}
+  .qd-table td{padding:10px 6px}
+  .qd-totals .tr{font-size:13px}
+  .qd-totals .tr.ttc{font-size:14px;font-weight:700}
+  .quote-total-row{font-size:13px}
+  .quote-total-row.total-ttc{font-size:14px;font-weight:700}
+  .voice-stage{padding:20px 12px;gap:14px}
+  .step-title{font-size:16px;font-weight:700}
+  .qd-in{padding:14px 10px}
+  .sticky-actions .btn{font-size:12px;padding:0 10px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

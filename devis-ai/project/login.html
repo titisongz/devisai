@@ -513,6 +513,23 @@ input:-webkit-autofill:focus {
   font-size: 0.88rem;
   margin-bottom: 0;
 }
+@media (max-width:768px){
+  .auth-main{padding:24px 16px 40px}
+  .auth-card{max-width:100%}
+  .auth-card h1{font-size:22px;font-weight:700}
+  .auth-card .sub{font-size:14px}
+  .btn{min-height:44px}
+  .form .between{flex-wrap:wrap;gap:8px}
+}
+@media (max-width:480px){
+  .auth-main{padding:16px 12px 32px}
+  .auth-card h1{font-size:20px;font-weight:700}
+  .form{gap:14px}
+  .form a.link{font-size:13px;font-weight:600}
+  .swap-line{font-size:13px}
+  .check{font-size:13px}
+  .divider-or{font-size:12px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>

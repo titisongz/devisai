@@ -434,6 +434,31 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
   .pv::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:42px;height:4px;border-radius:9px;background:var(--border-2)}
   .pv-head{padding-top:24px}
 }
+@media (max-width:768px){
+  .page-head{flex-direction:column;align-items:flex-start;gap:10px}
+  .page-head h1{font-size:20px;font-weight:700}
+  .page-head .sub{font-size:13.5px}
+  .pagination{flex-direction:column;align-items:flex-start;gap:10px}
+  .pagination .info{font-size:13px}
+  .pv-grid{grid-template-columns:1fr}
+  .pv-foot{grid-template-columns:1fr;gap:8px}
+  .pv-foot .full{grid-column:1}
+  .pv-foot .btn{min-height:44px}
+  .pv-amount{font-size:24px;font-weight:800}
+  .pv-body{gap:14px;padding:18px}
+}
+@media (max-width:480px){
+  .filters{gap:8px}
+  .chip{height:34px;padding:0 10px;font-size:12.5px;font-weight:600}
+  .pagination .pages button{width:34px;height:34px;font-size:13px}
+  .swipe-front{padding:14px}
+  .swipe-front .client{font-size:14px;font-weight:700}
+  .swipe-front .co{font-size:12px}
+  .swipe-front .amount{font-size:17px;font-weight:700}
+  .swipe-front .date{font-size:12px}
+  .swipe-hint{font-size:11.5px}
+  .pv-cell .v{font-size:14px;font-weight:600}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>

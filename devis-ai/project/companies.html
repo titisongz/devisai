@@ -391,6 +391,25 @@ table.data tbody tr:hover{background:rgba(255,255,255,.03)}
 @media (max-width:760px){.co-list{grid-template-columns:1fr}}
 .company-card-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .company-logo-thumb{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+@media (max-width:768px){
+  .page-head{flex-direction:column;align-items:flex-start;gap:10px}
+  .page-head h1{font-size:20px;font-weight:700}
+  .page-head .sub{font-size:13.5px}
+  .company{padding:16px}
+  .company .nm{font-size:16px;font-weight:700}
+  .company .foot .btn{flex:1;min-height:44px;font-size:13px;font-weight:600}
+  .modal-body .grid[style*="1fr 1fr"]{grid-template-columns:1fr!important}
+}
+@media (max-width:480px){
+  .company .nm{font-size:15px;font-weight:700}
+  .company .logo{width:46px;height:46px;font-size:15px;border-radius:10px}
+  .company .stat-mini{flex-direction:column;gap:6px}
+  .company .stat-mini b{font-size:13px;font-weight:700}
+  .company .foot{flex-direction:column;gap:8px}
+  .company .foot .btn{width:100%;min-height:44px}
+  .company .lines{font-size:13px}
+  .company-logo-thumb{width:44px;height:44px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
